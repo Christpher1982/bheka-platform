@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.tenant.provisioned.v1.json",
+  "title": "bheka.tenant.provisioned.v1",
+  "description": "Emitted by bheka-gateway when a new tenant is successfully created and its initial key custody configuration is set. Consumed by bheka-notify (welcome sequence) and the billing pipeline (010_EVENT_BUS_AND_TOPICS section 2).",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7. De-duplicate consumers on this field."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "bheka.tenant.provisioned.v1"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 / RFC 3339 timestamp in UTC."
+    },
+    "producer": {
+      "type": "string",
+      "const": "bheka-gateway"
+    },
+    "data": {
+      "type": "object",
+      "required": ["tenant_id", "slug", "key_custody_tier", "provisioned_by"],
+      "additionalProperties": false,
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the newly created tenant."
+        },
+        "slug": {
+          "type": "string",
+          "description": "URL-safe tenant slug."
+        },
+        "key_custody_tier": {
+          "type": "string",
+          "enum": ["a", "b", "c"],
+          "description": "Which of the three custody tiers (CANON section 6) was configured."
+        },
+        "provisioned_by": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the eride_support_engineer user who created this tenant."
+        }
+      }
+    }
+  }
+}

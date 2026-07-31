@@ -1,1 +1,2 @@
 - [Phase 1 Foundation](phase1-foundation.md) — Drizzle UUIDs, lib/db build order, @node-rs/argon2 esbuild, simplewebauthn v13 API, RLS SQL location, required env vars.
+- [Phase 2 Vault Stubs](phase2-vault-stubs.md) — VaultGrpcClient 4-env-var gate, no gateway rotation endpoint, lib/vault-client build order, event schema locations, shred audit pattern.

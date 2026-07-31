@@ -179,6 +179,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/vault-client':
+        specifier: workspace:*
+        version: link:../../lib/vault-client
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -466,6 +469,16 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+
+  lib/vault-client:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.5
 
   scripts:
     devDependencies:

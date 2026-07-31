@@ -1,0 +1,87 @@
+// Eride Vault gRPC service definition — spec artefact only.
+// Per ADR-002: this file is the authoritative gRPC contract for the gateway <-> Vault boundary.
+// Per CANON section 14 (anti-drift): shapes are defined here and nowhere else.
+// Runtime proto loading is implemented in lib/vault-client when GUIDE-02 is integrated.
+//
+// Transport: gRPC over mTLS (mutual TLS). Never exposed on a public port.
+// The Vault runs in a separate AWS account from bheka-gateway (CANON section 2).
+// bheka-gateway presents a client certificate; Vault validates it against a CA it controls.
+
+syntax = "proto3";
+
+package eride.vault.v1;
+
+option go_package = "github.com/eride-tech/bheka/vault/proto/v1";
+
+// VaultService is the single gRPC service exposed by Eride Vault.
+// Every RPC that returns key material returns it as base64url-encoded bytes.
+// Vault never returns bulk payload plaintext — it returns only DEKs (CANON section 6).
+service VaultService {
+  // GetTenantPublicKey returns the active X25519 public key for a tenant.
+  // Called by bheka-gateway during agent enrolment to provision the key the
+  // agent uses to seal per-blob DEKs via HPKE (RFC 9180, CANON section 2).
+  rpc GetTenantPublicKey (GetTenantPublicKeyRequest)
+    returns (GetTenantPublicKeyResponse);
+
+  // UnwrapDek decrypts a sealed data encryption key that an agent produced
+  // using HPKE (RFC 9180). The plaintext DEK is returned in-memory and must
+  // never be persisted by the caller. Routing bulk payload through this RPC
+  // is prohibited (CANON section 6, ADR-011).
+  rpc UnwrapDek (UnwrapDekRequest)
+    returns (UnwrapDekResponse);
+
+  // RotateTenantKey generates a new key version and returns the new public key.
+  // The previous key version remains available for UnwrapDek until it is shredded.
+  // Key rotation is an internal Vault operation; this RPC is called by the Vault
+  // scheduler, not by bheka-gateway directly (ADR-002 Decision 5).
+  rpc RotateTenantKey (RotateTenantKeyRequest)
+    returns (RotateTenantKeyResponse);
+
+  // ShredTenantKey destroys a key version irreversibly.
+  // After this call returns, all ciphertext sealed under this key version becomes
+  // permanently unrecoverable — in PostgreSQL, ClickHouse, and S3 alike.
+  // This is the POPIA s14 retention mechanism (CANON section 6).
+  // bheka-gateway calls this from POST /tenants/{tenantId}/keys/{keyId}/shred
+  // after dual-authorisation and WebAuthn step-up are verified.
+  rpc ShredTenantKey (ShredTenantKeyRequest)
+    returns (ShredTenantKeyResponse);
+}
+
+message GetTenantPublicKeyRequest {
+  string tenant_id   = 1;  // UUIDv7
+  string key_version = 2;  // Optional: empty = "active version"
+}
+
+message GetTenantPublicKeyResponse {
+  string key_version          = 1;
+  string public_key_x25519_b64 = 2;  // base64url-encoded X25519 public key
+}
+
+message UnwrapDekRequest {
+  string tenant_id      = 1;  // UUIDv7
+  string key_version    = 2;  // Version under which the DEK was sealed
+  string sealed_dek_b64 = 3;  // base64url-encoded HPKE ciphertext from agent
+}
+
+message UnwrapDekResponse {
+  string plaintext_dek_b64 = 1;  // base64url-encoded AES-256 DEK — handle in memory, never persist
+}
+
+message RotateTenantKeyRequest {
+  string tenant_id = 1;  // UUIDv7
+}
+
+message RotateTenantKeyResponse {
+  string new_key_version          = 1;
+  string new_public_key_x25519_b64 = 2;  // base64url-encoded; provision to next-enrolling agents
+}
+
+message ShredTenantKeyRequest {
+  string tenant_id   = 1;  // UUIDv7
+  string key_version = 2;  // Exact version to shred; must match a tenant_keys row
+}
+
+message ShredTenantKeyResponse {
+  // Intentionally empty: success is the only meaningful response.
+  // Failure surfaces as a gRPC status code (NOT_FOUND, PERMISSION_DENIED, etc.).
+}
