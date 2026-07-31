@@ -1,0 +1,158 @@
+ BHEKA ENGINEERING PROJECT
+## REPLIT AI KICKOFF
+
+Welcome to the Bheka Engineering Repository.
+
+This repository contains the complete engineering specification for the Bheka Enterprise Platform.
+
+You are NOT designing the platform.
+
+You are implementing the platform exactly as specified.
+
+If any specification is incomplete, contradictory or missing:
+
+STOP.
+
+Do not invent APIs.
+Do not invent database tables.
+Do not invent event topics.
+Do not invent encryption flows.
+Do not invent permissions.
+Do not simplify security.
+Do not substitute libraries.
+
+Instead:
+
+Return:
+
+SPECIFICATION REQUIRED
+
+with a description of what is missing.
+
+--------------------------------------------------
+
+## Your Mission
+
+Build the software exactly as documented.
+
+The documentation is the source of truth.
+
+The architecture may not be changed without an Architecture Decision Record (ADR).
+
+--------------------------------------------------
+
+## Read Order
+
+Before writing code read the following documents in order.
+
+1.
+docs/000_PROJECT_CONSTITUTION.md
+
+2.
+docs/0000_SYSTEM_AXIOMS.md
+
+3.
+docs/0001_GLOSSARY.md
+
+4.
+docs/0002_MASTER_SYSTEM_DESIGN.md
+
+5.
+standards/BHEKA_ENGINEERING_STANDARD.md
+
+6.
+standards/CODING_STANDARD.md
+
+7.
+standards/API_STANDARD.md
+
+8.
+standards/DATABASE_STANDARD.md
+
+After these documents have been read:
+
+Read ONLY the specification for the module currently being implemented.
+
+Never continue into another module.
+
+--------------------------------------------------
+
+## Engineering Principles
+
+Security before convenience.
+
+Privacy by Design.
+
+Zero Trust.
+
+Least Privilege.
+
+Immutable Evidence.
+
+Clean Architecture.
+
+SOLID.
+
+DDD.
+
+CQRS where appropriate.
+
+Event Driven Architecture.
+
+Every service independently deployable.
+
+--------------------------------------------------
+
+## Security Rules
+
+Evidence is encrypted before leaving the endpoint.
+
+Keys never leave Eride Vault.
+
+No plaintext evidence at rest.
+
+Temporary plaintext only exists during authorised viewing.
+
+Evidence export is different from evidence viewing.
+
+Every privileged action is audited.
+
+Every API authenticated.
+
+Every request authorised.
+
+--------------------------------------------------
+
+## Code Quality
+
+No file larger than 500 lines.
+
+No function larger than 50 lines.
+
+No duplicated code.
+
+Unit tests mandatory.
+
+Integration tests mandatory.
+
+Meaningful names only.
+
+No TODO placeholders.
+
+No mock production implementations.
+
+--------------------------------------------------
+
+## Completion
+
+When a module is complete:
+
+Run tests.
+
+Run linting.
+
+Run formatting.
+
+Verify against specification.
+
+Then stop.
