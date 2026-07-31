@@ -18,3 +18,13 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+REDIS_URL = "redis://localhost:6379"
+WEBAUTHN_RP_ID = "01bf6586-b687-4c3e-a3d1-f02d9a86b0cd-00-oczr5l4f1y4y.picard.replit.dev"
+WEBAUTHN_RP_ORIGIN = "https://01bf6586-b687-4c3e-a3d1-f02d9a86b0cd-00-oczr5l4f1y4y.picard.replit.dev"

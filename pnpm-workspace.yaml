@@ -69,6 +69,7 @@ catalog:
 autoInstallPeers: false
 
 onlyBuiltDependencies:
+  - '@node-rs/argon2'
   - '@swc/core'
   - esbuild
   - msw

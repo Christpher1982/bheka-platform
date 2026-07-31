@@ -1,0 +1,1 @@
+- [Phase 1 Foundation](phase1-foundation.md) — Drizzle UUIDs, lib/db build order, @node-rs/argon2 esbuild, simplewebauthn v13 API, RLS SQL location, required env vars.

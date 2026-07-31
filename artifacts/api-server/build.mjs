@@ -35,6 +35,8 @@ async function buildAll() {
       "canvas",
       "bcrypt",
       "argon2",
+      "@node-rs/argon2",
+      "@node-rs/argon2-linux-x64-gnu",
       "fsevents",
       "re2",
       "farmhash",
