@@ -7,6 +7,8 @@ import oidcRouter from "./auth/oidc.js";
 import webauthnRouter from "./auth/webauthn.js";
 import scimRouter from "./auth/scim.js";
 import tenantsRouter from "./v1/tenants.js";
+import sitesRouter from "./v1/sites.js";
+import usersRouter from "./v1/users.js";
 
 const router: IRouter = Router();
 
@@ -15,5 +17,7 @@ router.use(oidcRouter);
 router.use(webauthnRouter);
 router.use(scimRouter);
 router.use(tenantsRouter);
+router.use(sitesRouter);
+router.use(usersRouter);
 
 export default router;
