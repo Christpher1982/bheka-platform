@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.agent.heartbeat.v1.json",
+  "title": "bheka.agent.heartbeat.v1",
+  "description": "Emitted by bheka-gateway on each successful POST /agents/{agentId}/heartbeat. Not written to audit_log (high-frequency telemetry; see 009_API_SURFACE section 6 and section 14). Consumed by observability pipeline and OpenTelemetry metrics.",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7. De-duplicate consumers on this field."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "bheka.agent.heartbeat.v1"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 / RFC 3339 timestamp in UTC of the heartbeat receipt."
+    },
+    "producer": {
+      "type": "string",
+      "const": "bheka-gateway"
+    },
+    "data": {
+      "type": "object",
+      "required": ["agent_id", "tenant_id", "endpoint_id"],
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the agents row."
+        },
+        "tenant_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the tenant."
+        },
+        "endpoint_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the endpoint."
+        },
+        "current_tier": {
+          "type": "string",
+          "enum": ["baseline", "elevated", "investigation"],
+          "description": "Collection tier active on the agent at heartbeat time."
+        },
+        "buffer_used_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Bytes consumed by the local SQLCipher buffer at heartbeat time. Used for disk pressure monitoring."
+        },
+        "agent_version": {
+          "type": "string",
+          "description": "Human-readable version string (e.g. '1.2.3') reported by the agent binary."
+        }
+      }
+    }
+  }
+}

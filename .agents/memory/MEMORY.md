@@ -1,3 +1,4 @@
 - [Phase 1 Foundation](phase1-foundation.md) — Drizzle UUIDs, lib/db build order, @node-rs/argon2 esbuild, simplewebauthn v13 API, RLS SQL location, required env vars.
 - [Phase 2 Vault Stubs](phase2-vault-stubs.md) — VaultGrpcClient 4-env-var gate, no gateway rotation endpoint, lib/vault-client build order, event schema locations, shred audit pattern.
 - [Phase 3 Schema + Org API](phase3-schema-and-org-api.md) — All 27 canonical tables complete, structural DB constraints, detections sql import, IO singleton error string, sites/users/roles routes.
+- [Phase 4 Endpoints + Agents](phase4-endpoints-agents.md) — enrolmentToken Redis pattern, agentMTLS middleware, req.params as-string cast, ring progression, Vault-required enrolment, event schema stubs.

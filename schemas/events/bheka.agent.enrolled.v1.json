@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.agent.enrolled.v1.json",
+  "title": "bheka.agent.enrolled.v1",
+  "description": "Emitted by bheka-gateway when an endpoint agent completes enrolment and receives its mTLS certificate and tenant public key. Downstream services (bheka-ingest, bheka-policy) use this to open the expected ingestion channel for the agent_id. Per 011_ENDPOINT_AGENT_DESIGN section 11.",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7. De-duplicate consumers on this field."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "bheka.agent.enrolled.v1"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 / RFC 3339 timestamp in UTC at which enrolment completed."
+    },
+    "producer": {
+      "type": "string",
+      "const": "bheka-gateway"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "endpoint_id",
+        "tenant_id",
+        "site_id",
+        "platform",
+        "agent_version_id",
+        "certificate_fingerprint"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the newly created agents row."
+        },
+        "endpoint_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the endpoints row. May be newly created or pre-existing (re-enrolment)."
+        },
+        "tenant_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the enrolling tenant."
+        },
+        "site_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the site this endpoint belongs to."
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["windows", "linux", "macos"],
+          "description": "OS platform of the enrolling endpoint."
+        },
+        "agent_version_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the agent_versions row the agent enrolled at."
+        },
+        "certificate_fingerprint": {
+          "type": "string",
+          "description": "Hex-encoded SHA-256 fingerprint of the mTLS cert issued at enrolment. Used by bheka-ingest to validate subsequent agent uploads."
+        }
+      }
+    }
+  }
+}

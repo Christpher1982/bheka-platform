@@ -107,4 +107,48 @@ export const Problems = {
       status: 500,
     };
   },
+
+  invalidEnrolmentToken(): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/invalid-enrolment-token`,
+      title: "Enrolment token invalid or expired",
+      status: 401,
+      detail:
+        "The enrolment token is missing, expired, or has already been used. " +
+        "Single-use tokens are consumed on first use. Obtain a new token via the console.",
+    };
+  },
+
+  agentAuthRequired(): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/agent-authentication-required`,
+      title: "Agent mTLS authentication required",
+      status: 401,
+      detail:
+        "This endpoint requires a valid agent mTLS certificate. " +
+        "Ensure the X-Agent-Cert-Fingerprint header is set by the TLS-terminating proxy.",
+    };
+  },
+
+  vaultUnavailable(): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/vault-unavailable`,
+      title: "Vault service unavailable",
+      status: 503,
+      detail:
+        "The Eride Vault service is not deployed or not reachable. " +
+        "Agent enrolment requires Vault for certificate issuance.",
+    };
+  },
+
+  ringAlreadyFinal(): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/ring-already-final`,
+      title: "Version already at final ring",
+      status: 409,
+      detail:
+        "This agent version is already at ring_3 (fully rolled out). " +
+        "There is no further ring to advance to.",
+    };
+  },
 } as const;

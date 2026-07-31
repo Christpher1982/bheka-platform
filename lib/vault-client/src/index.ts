@@ -1,6 +1,8 @@
 export type {
   GetTenantPublicKeyRequest,
   GetTenantPublicKeyResponse,
+  IssueAgentCertRequest,
+  IssueAgentCertResponse,
   UnwrapDekRequest,
   UnwrapDekResponse,
   RotateTenantKeyRequest,

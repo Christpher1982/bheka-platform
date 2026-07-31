@@ -49,6 +49,25 @@ export interface RotateTenantKeyResponse {
   newPublicKeyX25519B64: string;
 }
 
+// ── IssueAgentCert ──────────────────────────────────────────────────────────
+
+export interface IssueAgentCertRequest {
+  tenantId: string;
+  // UUIDv7 of the agents row to be created; embedded in the cert's Subject CN
+  // so revocation lookups are O(1) without a separate CN-to-agent mapping.
+  agentId: string;
+  // PEM-encoded PKCS#10 certificate signing request generated on the endpoint.
+  csrPem: string;
+}
+
+export interface IssueAgentCertResponse {
+  // PEM-encoded signed mTLS client certificate (short-lived, per ADR-002).
+  certificatePem: string;
+  // Hex-encoded SHA-256 fingerprint of the issued certificate.
+  // Stored in agents.certificate_fingerprint for subsequent mTLS validation.
+  certificateFingerprint: string;
+}
+
 // ── ShredTenantKey ──────────────────────────────────────────────────────────
 
 export interface ShredTenantKeyRequest {

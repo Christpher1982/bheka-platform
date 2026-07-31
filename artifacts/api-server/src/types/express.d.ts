@@ -13,6 +13,13 @@ declare global {
       tenantId?: string;
       // Tenant ID resolved from a SCIM bearer token (GUIDE-01 section 6.1).
       scimTenantId?: string;
+      // Populated by requireAgentMTLS middleware. Present only on agent-facing routes.
+      agent?: {
+        id: string;
+        tenantId: string;
+        endpointId: string;
+        certificateFingerprint: string;
+      };
     }
   }
 }

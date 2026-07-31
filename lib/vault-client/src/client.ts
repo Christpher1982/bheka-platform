@@ -7,6 +7,8 @@
 import type {
   GetTenantPublicKeyRequest,
   GetTenantPublicKeyResponse,
+  IssueAgentCertRequest,
+  IssueAgentCertResponse,
   UnwrapDekRequest,
   UnwrapDekResponse,
   RotateTenantKeyRequest,
@@ -33,6 +35,11 @@ export interface VaultClient {
   ): Promise<RotateTenantKeyResponse>;
 
   shredTenantKey(req: ShredTenantKeyRequest): Promise<ShredTenantKeyResponse>;
+
+  // Issues a short-lived mTLS client certificate for an enrolling agent.
+  // The agent sends a CSR; Vault signs it under the tenant's mTLS CA policy.
+  // See schemas/grpc/vault.proto IssueAgentCert and 011_ENDPOINT_AGENT_DESIGN §11.
+  issueAgentCert(req: IssueAgentCertRequest): Promise<IssueAgentCertResponse>;
 }
 
 // ── VaultConfig ─────────────────────────────────────────────────────────────
@@ -145,6 +152,25 @@ export class VaultGrpcClient implements VaultClient {
       new Error(
         `gRPC call to ${cfg.endpoint} requires GUIDE-02 integration ` +
           `(see schemas/grpc/vault.proto ShredTenantKey)`,
+      ),
+    );
+  }
+
+  async issueAgentCert(
+    req: IssueAgentCertRequest,
+  ): Promise<IssueAgentCertResponse> {
+    const cfg = this.assertDeployed();
+    // GUIDE-02 integration point:
+    // 1. Obtain gRPC channel with mTLS using cfg.
+    // 2. Call VaultService.IssueAgentCert with { tenant_id, agent_id, csr_pem }.
+    // 3. Return { certificatePem, certificateFingerprint } from the response.
+    // 4. Map INVALID_ARGUMENT → VaultAuthError (malformed CSR),
+    //    NOT_FOUND → VaultKeyNotFoundError (unknown tenant).
+    // ADR-002: never return a self-signed stub cert — require Vault deployment.
+    throw new VaultUnavailableError(
+      new Error(
+        `gRPC call to ${cfg.endpoint} requires GUIDE-02 integration ` +
+          `(see schemas/grpc/vault.proto IssueAgentCert)`,
       ),
     );
   }

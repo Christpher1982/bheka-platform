@@ -45,6 +45,14 @@ service VaultService {
   // after dual-authorisation and WebAuthn step-up are verified.
   rpc ShredTenantKey (ShredTenantKeyRequest)
     returns (ShredTenantKeyResponse);
+
+  // IssueAgentCert signs an agent's PKCS#10 CSR and returns a short-lived mTLS
+  // client certificate. Called by bheka-gateway during POST /agents/enrol.
+  // The resulting certificate's Subject CN encodes the agent_id so that mTLS
+  // revocation lookups at bheka-ingest are O(1).
+  // On success the gateway stores the certificate fingerprint in agents.certificate_fingerprint.
+  rpc IssueAgentCert (IssueAgentCertRequest)
+    returns (IssueAgentCertResponse);
 }
 
 message GetTenantPublicKeyRequest {
@@ -84,4 +92,15 @@ message ShredTenantKeyRequest {
 message ShredTenantKeyResponse {
   // Intentionally empty: success is the only meaningful response.
   // Failure surfaces as a gRPC status code (NOT_FOUND, PERMISSION_DENIED, etc.).
+}
+
+message IssueAgentCertRequest {
+  string tenant_id = 1;  // UUIDv7 — used to select the tenant's mTLS CA policy
+  string agent_id  = 2;  // UUIDv7 — embedded in Subject CN for revocation lookups
+  string csr_pem   = 3;  // PEM-encoded PKCS#10 certificate signing request from the endpoint
+}
+
+message IssueAgentCertResponse {
+  string certificate_pem         = 1;  // PEM-encoded signed mTLS client certificate (short-lived)
+  string certificate_fingerprint = 2;  // Hex-encoded SHA-256 fingerprint of the issued certificate
 }
