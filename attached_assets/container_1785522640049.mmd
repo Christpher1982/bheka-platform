@@ -1,0 +1,48 @@
+%% Bheka C4 container diagram
+%% CONFIDENTIAL - Eride Technologies (Pty) Ltd. Not for distribution outside
+%% Eride Technologies or parties under written NDA.
+%% Service names and boundaries per CANON.md section 3. Do not rename.
+
+C4Container
+    title Bheka Container Diagram
+
+    Person(user, "Platform User", "Investigator, admin, or Information Officer")
+    Person(employee, "Monitored Employee", "Uses a company-owned endpoint")
+
+    System_Boundary(platform, "Bheka Platform (af-south-1)") {
+        Container(agent, "bheka-agent", "Rust", "Endpoint telemetry capture, HPKE sealing, SQLCipher local buffer")
+        Container(gateway, "bheka-gateway", "TypeScript / Fastify", "API gateway, OIDC session handling, routing")
+        Container(ingest, "bheka-ingest", "TypeScript / Fastify", "Batch validation, NATS publish, ClickHouse writes")
+        Container(policy, "bheka-policy", "TypeScript", "Rule evaluation, risk scoring, tier escalation")
+        Container(case_svc, "bheka-case", "TypeScript", "Cases, approvals, evidence decrypt-in-memory serving")
+        Container(notify, "bheka-notify", "TypeScript", "Transparency notices, alerts, WhatsApp/email delivery")
+        Container(console, "bheka-console", "TypeScript / Next.js 15", "Web UI, Server Components for read, no privileged Server Actions")
+        Container(updater, "bheka-updater", "Rust", "Agent update ring delivery and rollback")
+        ContainerDb(pg, "Postgres 16", "Control plane: tenants, cases, policies, audit_log")
+        ContainerDb(ch, "ClickHouse 24.x", "Telemetry: events_raw, events_file_ops, events_web, etc")
+        ContainerQueue(nats, "NATS JetStream", "Event bus, bheka.<domain>.<event>.v<n> subjects")
+        ContainerDb(redis, "Redis 7 / Valkey", "Sessions, idempotency keys, rate limiting, sliding-window counters")
+    }
+
+    System_Boundary(vaultboundary, "Eride Vault (separate cloud account)") {
+        Container(vault, "eride-vault", "Rust / tonic gRPC", "DEK unwrap only, quorum policy engine, issuing CA")
+    }
+
+    Rel(employee, agent, "Runs on endpoint device")
+    Rel(agent, ingest, "Uploads sealed batches, mTLS + Idempotency-Key, backpressure")
+    Rel(agent, vault, "mTLS certificate enrolment and renewal only")
+    Rel(user, console, "HTTPS, OIDC session")
+    Rel(console, gateway, "API calls, TanStack Query, no privileged Server Actions")
+    Rel(gateway, ingest, "Routes ingest requests")
+    Rel(gateway, policy, "Routes policy/detection queries")
+    Rel(gateway, case_svc, "Routes case/evidence requests")
+    Rel(ingest, nats, "Publishes bheka.telemetry.batch.v1")
+    Rel(ingest, ch, "Writes decrypted telemetry by event type")
+    Rel(ingest, vault, "UnwrapDek only, gRPC over mTLS")
+    Rel(policy, nats, "Consumes telemetry events, publishes detection/case events")
+    Rel(policy, pg, "Reads policies, writes detections/risk_scores")
+    Rel(case_svc, vault, "UnwrapDek only, for evidence decrypt-in-memory")
+    Rel(case_svc, pg, "Cases, approvals, audit_log")
+    Rel(case_svc, notify, "Triggers transparency notice issuance")
+    Rel(updater, agent, "Signed installer delivery per ring")
+    Rel(gateway, redis, "Sessions, idempotency, rate limiting")

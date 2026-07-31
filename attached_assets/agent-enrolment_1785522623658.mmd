@@ -1,0 +1,29 @@
+%% Bheka agent enrolment sequence
+%% CONFIDENTIAL - Eride Technologies (Pty) Ltd. Not for distribution outside
+%% Eride Technologies or parties under written NDA.
+%% Full procedure: build-guides/GUIDE-01-Authentication.md section 4,
+%% build-guides/GUIDE-08-Tenant-Onboarding.md
+
+sequenceDiagram
+    participant Admin as IT Administrator
+    participant Console as bheka-console
+    participant Gateway as bheka-gateway
+    participant Agent as bheka-agent (new device)
+    participant Vault as eride-vault
+
+    Admin->>Console: Generate installer config for tenant
+    Console->>Gateway: POST /v1/admin/tenants/{id}/installer-config
+    Gateway-->>Console: Single-use enrolment token + installer package
+    Admin->>Agent: Install MSI with TENANT_ID, ENROLMENT_TOKEN, SERVER_URL, TIER
+
+    Agent->>Agent: Generate keypair, build CSR (rcgen)
+    Agent->>Vault: EnrolAgent(csr, enrolment_token) over mTLS bootstrap channel
+    Vault->>Vault: Validate token (single-use, not expired, matches tenant)
+    Vault->>Vault: Sign certificate with issuing CA
+    Vault-->>Agent: Signed agent certificate + tenant X25519 public key
+
+    Agent->>Agent: Store certificate, store tenant public key (never private key)
+    Agent->>Gateway: Heartbeat (bheka.agent.enrolled.v1 published)
+    Gateway-->>Admin: Enrolment confirmed in console
+
+    Note over Agent,Vault: From this point, all agent-Vault contact is<br/>renewal-only. Agent never requests decrypt capability.

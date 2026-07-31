@@ -1,0 +1,43 @@
+%% Bheka air-gapped / on-prem deployment topology
+%% CONFIDENTIAL - Eride Technologies (Pty) Ltd. Not for distribution outside
+%% Eride Technologies or parties under written NDA.
+%% Reference: build-guides/GUIDE-10-On-Prem-Appliance.md
+
+flowchart TB
+    subgraph customer_estate["Customer estate - air-gapped or restricted network"]
+        subgraph appliance["Bheka on-prem appliance (.ova / Compose / Helm)"]
+            vault_c["eride-vault<br/>tier C - customer hosted"]
+            case_c["bheka-case (full-platform shape only)"]
+            pg_c[("Postgres - local")]
+            s3_c[("S3-compatible object store - local")]
+        end
+        endpoints["Monitored endpoints<br/>bheka-agent fleet"]
+        admin_c["On-prem administrator"]
+    end
+
+    subgraph update_channel["Air-gapped update delivery"]
+        media["Signed update bundle<br/>GPG signature + checksum<br/>transferred via approved removable media"]
+    end
+
+    subgraph eride_side["Eride Technologies (external, disconnected from customer network)"]
+        build["Build pipeline produces signed .ova / bundle"]
+        signing["Eride GPG signing key"]
+    end
+
+    endpoints -->|local network only| appliance
+    admin_c -->|manages| appliance
+
+    build --> signing
+    signing --> media
+    media -->|manually carried across the air gap| admin_c
+    admin_c -->|verify GPG + checksum before docker load| appliance
+
+    vault_c -. never initiates outbound connection .-> update_channel
+    case_c --> pg_c
+    case_c --> s3_c
+    vault_c --- case_c
+
+    style eride_side fill:#1a1a1a,color:#fff
+    style customer_estate fill:#2b2b2b,color:#fff
+    note1["No default outbound route exists from the appliance network.<br/>Vault never initiates outbound connectivity, per<br/>build-guides/GUIDE-10-On-Prem-Appliance.md."]
+    appliance --- note1

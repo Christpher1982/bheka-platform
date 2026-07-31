@@ -1,0 +1,57 @@
+%% Bheka trust boundary diagram
+%% CONFIDENTIAL - Eride Technologies (Pty) Ltd. Not for distribution outside
+%% Eride Technologies or parties under written NDA.
+%% Used by: templates/THREAT_MODEL_TEMPLATE.md
+%% Reference: CANON section 6 (key custody), section 9 (API standard)
+
+flowchart LR
+    subgraph tb1["Trust boundary 1: Endpoint device (least trusted)"]
+        agent["bheka-agent<br/>holds only tenant PUBLIC key<br/>cannot decrypt anything"]
+    end
+
+    subgraph tb2["Trust boundary 2: Public internet"]
+        transit1["Agent to gateway, mTLS + Idempotency-Key"]
+        transit2["Browser to gateway, HTTPS + OIDC session"]
+    end
+
+    subgraph tb3["Trust boundary 3: Eride platform account, private subnet"]
+        gateway["bheka-gateway"]
+        ingest["bheka-ingest"]
+        policy["bheka-policy"]
+        case_svc["bheka-case<br/>decrypts evidence in memory only"]
+        pg[("Postgres, RLS enforced per tenant_id")]
+        ch[("ClickHouse, Tier 1 metadata in cleartext")]
+    end
+
+    subgraph tb4["Trust boundary 4: Eride Vault account, separate, isolated (most trusted)"]
+        vault["eride-vault<br/>gRPC over mTLS only<br/>unwraps DEKs only, never bulk payloads<br/>quorum-gated policy changes"]
+    end
+
+    subgraph tb5["Trust boundary 5: Customer-controlled (tier B / tier C only)"]
+        customer_kms["Customer KMS / customer-hosted Vault<br/>Eride cannot decrypt"]
+    end
+
+    agent -->|crosses tb1 to tb2| transit1
+    transit1 -->|crosses tb2 to tb3| ingest
+    transit2 -->|crosses tb2 to tb3| gateway
+    gateway --> policy
+    gateway --> case_svc
+    ingest --> ch
+    ingest -.->|UnwrapDek only, crosses tb3 to tb4| vault
+    case_svc -.->|UnwrapDek only, crosses tb3 to tb4| vault
+    policy --> pg
+    case_svc --> pg
+
+    vault -.->|tier A only| aws_kms["AWS KMS - Eride account"]
+    vault -.->|tier B: delegates to customer's own key, crosses tb4 to tb5| customer_kms
+    vault -.->|tier C: Vault itself runs inside tb5, no crossing exists| customer_kms
+
+    classDef untrusted fill:#4d1f1f,color:#fff
+    classDef semitrusted fill:#4d3f1f,color:#fff
+    classDef trusted fill:#1f3f1f,color:#fff
+    classDef mosttrusted fill:#1f2f4d,color:#fff
+    class tb1 untrusted
+    class tb2 semitrusted
+    class tb3 trusted
+    class tb4 mosttrusted
+    class tb5 mosttrusted
