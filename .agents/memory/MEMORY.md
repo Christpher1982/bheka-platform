@@ -2,3 +2,4 @@
 - [Phase 2 Vault Stubs](phase2-vault-stubs.md) — VaultGrpcClient 4-env-var gate, no gateway rotation endpoint, lib/vault-client build order, event schema locations, shred audit pattern.
 - [Phase 3 Schema + Org API](phase3-schema-and-org-api.md) — All 27 canonical tables complete, structural DB constraints, detections sql import, IO singleton error string, sites/users/roles routes.
 - [Phase 4 Endpoints + Agents](phase4-endpoints-agents.md) — enrolmentToken Redis pattern, agentMTLS middleware, req.params as-string cast, ring progression, Vault-required enrolment, event schema stubs.
+- [Phase 5 Policies + Detections](phase5-policies-detections.md) — Drizzle .set() typed spread pattern, Tier 3 dual-auth API+DB dual check, conditionJson opacity, detection triage timestamps, event schema producer attribution.

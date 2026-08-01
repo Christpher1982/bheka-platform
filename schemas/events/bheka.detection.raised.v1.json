@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.detection.raised.v1.json",
+  "title": "bheka.detection.raised.v1",
+  "description": "Emitted by bheka-policy when a policy rule matches incoming telemetry and creates a detections row in PostgreSQL. Never emitted by bheka-gateway; the REST API has no create-detection endpoint (009_API_SURFACE section 8). Stream: DETECTION. Consumers: bheka-case (case linkage suggestion), bheka-notify (admin alerting), bheka-console (real-time feed).",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7. De-duplicate consumers on this field."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "bheka.detection.raised.v1"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 / RFC 3339 timestamp in UTC at which bheka-policy raised the detection."
+    },
+    "producer": {
+      "type": "string",
+      "const": "bheka-policy"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "detection_id",
+        "tenant_id",
+        "policy_rule_id",
+        "subject_user_id",
+        "tier",
+        "source_event_ids"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "detection_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the detections row created in PostgreSQL."
+        },
+        "tenant_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the tenant whose data triggered the detection."
+        },
+        "policy_rule_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the policy_rules row that matched."
+        },
+        "subject_user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the users row for the data subject whose activity triggered the detection."
+        },
+        "tier": {
+          "type": "integer",
+          "enum": [1, 2, 3],
+          "description": "Visibility tier of the telemetry that triggered this detection (CANON section 4)."
+        },
+        "source_event_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "ClickHouse row identifiers for the matching telemetry events. Pointers only — no event content (008_DATA_MODEL section 4, tier-boundary rule)."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.risk.recalculated.v1.json",
+  "title": "bheka.risk.recalculated.v1",
+  "description": "Emitted by bheka-policy when it appends a new risk_scores row after recalculating a user's risk. Stream: DETECTION. Consumers: bheka-console (dashboards), bheka-notify (threshold-crossing alerts). Per-subject-user-id ordering preferred but not guaranteed; consumers must derive ordering from occurred_at (010_EVENT_BUS_AND_TOPICS section 2).",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7. De-duplicate consumers on this field."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "bheka.risk.recalculated.v1"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 / RFC 3339 timestamp in UTC at which bheka-policy completed the recalculation."
+    },
+    "producer": {
+      "type": "string",
+      "const": "bheka-policy"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "risk_score_id",
+        "tenant_id",
+        "user_id",
+        "score",
+        "contributing_signals"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "risk_score_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the new risk_scores row. Each row is immutable (no updated_at) — every recalculation creates a new row."
+        },
+        "tenant_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the tenant."
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the users row for the scored data subject."
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Normalised risk score 0-100. Never a black box — contributing_signals below provides the decomposition (CANON section 5, refusal 6: no opaque scoring)."
+        },
+        "contributing_signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["detection_id", "weight", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "detection_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "UUIDv7 of the detections row that contributed to this score."
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Fractional contribution of this signal to the total score."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Human-readable explanation of why this signal contributed at this weight."
+              }
+            }
+          },
+          "description": "Explainable decomposition of the score. Required by CANON section 5 (no opaque scoring). Mirrors risk_scores.contributing_signals in PostgreSQL."
+        }
+      }
+    }
+  }
+}

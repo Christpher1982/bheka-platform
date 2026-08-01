@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.agent.update_ring_advanced.v1.json",
+  "title": "bheka.agent.update_ring_advanced.v1",
+  "description": "Emitted by bheka-updater (NOT bheka-gateway) when an agent_versions row has its minimum_ring advanced one step toward ring_3. bheka-gateway's POST /agent-versions/{id}/advance-ring updates the DB; bheka-updater reacts to that change and emits this event. Stream: AGENT. Consumers: bheka-console (release dashboard). Per-agent_version_id ordering matters (ring only advances forward); guaranteed by bheka-updater being the sole producer (010_EVENT_BUS_AND_TOPICS section 2).",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7. De-duplicate consumers on this field."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "bheka.agent.update_ring_advanced.v1"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 / RFC 3339 timestamp in UTC at which bheka-updater confirmed the ring advancement."
+    },
+    "producer": {
+      "type": "string",
+      "const": "bheka-updater"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "agent_version_id",
+        "version_string",
+        "platform",
+        "from_ring",
+        "to_ring",
+        "advanced_by_user_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "agent_version_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the agent_versions row whose minimum_ring was advanced."
+        },
+        "version_string": {
+          "type": "string",
+          "description": "Human-readable version string (e.g. '1.2.3') for console display."
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["windows", "linux", "macos"],
+          "description": "OS platform of this agent version."
+        },
+        "from_ring": {
+          "type": "string",
+          "enum": ["canary", "ring_0", "ring_1", "ring_2", "ring_3"],
+          "description": "The minimum_ring value before advancement."
+        },
+        "to_ring": {
+          "type": "string",
+          "enum": ["canary", "ring_0", "ring_1", "ring_2", "ring_3"],
+          "description": "The minimum_ring value after advancement."
+        },
+        "advanced_by_user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7 of the user who triggered the advancement via POST /agent-versions/{id}/advance-ring. For T-SUPPLY-01 supply-chain traceability (003_THREAT_MODEL)."
+        }
+      }
+    }
+  }
+}
