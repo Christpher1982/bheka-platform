@@ -6,15 +6,16 @@
 //   PATCH /v1/detections/:detectionId           — triage state change (audited)
 //   GET   /v1/users/:userId/risk-scores         — read-only, cursor-paginated (oidcBearer)
 //
-// Detections and risk_scores are NEVER created via the REST API — both are
-// produced by bheka-policy reacting to telemetry (009_API_SURFACE section 8).
-// The PATCH endpoint is the only write; it updates triage state only.
+// Detections and risk_scores are NEVER created by a console-facing REST call —
+// they are produced by bheka-policy reacting to telemetry (009_API_SURFACE
+// section 8) or by the v0 rule engine on agent ingest (see v1/agent-events.ts).
+// The PATCH endpoint is the only write here; it updates triage state only.
 //
 // No WebAuthn step-up required for any route in this group.
 
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, lt, sql } from "drizzle-orm";
 import { db, detectionsTable, riskScoresTable, usersTable } from "@workspace/db";
 import { withTenantContext } from "../../lib/tenant-context.js";
 import { writeAuditLog } from "../../lib/audit-writer.js";
@@ -24,6 +25,8 @@ import { requireSession } from "../../middleware/require-session.js";
 const router: IRouter = Router();
 
 // ── GET /v1/detections ──────────────────────────────────────────────────────
+// Newest first. IDs are UUIDv7, so descending id order is descending time order
+// and the cursor stays a single opaque id.
 // Optional filters: status, subjectUserId, tier
 
 router.get(
@@ -46,7 +49,7 @@ router.get(
         .where(
           and(
             eq(detectionsTable.tenantId, tenantId),
-            cursor ? gt(detectionsTable.id, cursor) : undefined,
+            cursor ? lt(detectionsTable.id, cursor) : undefined,
             filterStatus
               ? sql`${detectionsTable.status} = ${filterStatus}::detection_status`
               : undefined,
@@ -58,7 +61,7 @@ router.get(
               : undefined,
           ),
         )
-        .orderBy(detectionsTable.id)
+        .orderBy(desc(detectionsTable.id))
         .limit(limit + 1),
     );
 
@@ -70,11 +73,18 @@ router.get(
       items: items.map((d) => ({
         id: d.id,
         tenantId: d.tenantId,
+        siteId: d.siteId,
         policyRuleId: d.policyRuleId,
+        ruleName: d.ruleName,
+        severity: d.severity,
+        summary: d.summary,
         subjectUserId: d.subjectUserId,
+        caseId: d.caseId,
         tier: d.tier,
         status: d.status,
         sourceEventIds: d.sourceEventIds,
+        sourceEventId: d.sourceEventId,
+        occurredAt: d.occurredAt,
         triagedAt: d.triagedAt,
         triagedBy: d.triagedBy,
         resolvedAt: d.resolvedAt,
@@ -118,11 +128,18 @@ router.get(
     res.json({
       id: detection.id,
       tenantId: detection.tenantId,
+      siteId: detection.siteId,
       policyRuleId: detection.policyRuleId,
+      ruleName: detection.ruleName,
+      severity: detection.severity,
+      summary: detection.summary,
       subjectUserId: detection.subjectUserId,
+      caseId: detection.caseId,
       tier: detection.tier,
       status: detection.status,
       sourceEventIds: detection.sourceEventIds,
+      sourceEventId: detection.sourceEventId,
+      occurredAt: detection.occurredAt,
       triagedAt: detection.triagedAt,
       triagedBy: detection.triagedBy,
       resolvedAt: detection.resolvedAt,

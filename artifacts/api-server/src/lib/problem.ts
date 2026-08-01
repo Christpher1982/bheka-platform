@@ -130,6 +130,16 @@ export const Problems = {
     };
   },
 
+  agentTokenRequired(): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/agent-authentication-required`,
+      title: "Agent token authentication required",
+      status: 401,
+      detail:
+        "This endpoint requires a valid shared ingest token in the X-Agent-Token header.",
+    };
+  },
+
   vaultUnavailable(): ProblemDetail {
     return {
       type: `${PROBLEM_BASE}/vault-unavailable`,
