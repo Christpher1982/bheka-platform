@@ -4,12 +4,12 @@
 //   - the 9 canonical roles (system-wide, per lib/db/src/schema/users.ts)
 //   - 1 tenant ("Eride Technologies")
 //   - 1 site under that tenant
-//   - 1 admin user, assigned the tenant_owner role
+//   - 1 admin user, assigned the tenant_owner and investigator roles
 //   - 1 inactive OIDC config stub for the tenant (so tenant-slug resolution
 //     in GET /api/v1/auth/login?tenant=... doesn't 404 before a real IdP is wired up)
 //
 // Idempotent — safe to re-run. Existing rows are matched on their unique keys
-// and left untouched (roles, tenant) or skipped (site, user, role assignment, oidc config).
+// and left untouched (roles, tenant) or skipped (site, user, role assignments, oidc config).
 //
 // Usage:
 //   pnpm --filter @workspace/scripts run seed:dev
@@ -21,7 +21,7 @@
 // (lib/db/src/schema/users.ts) is: tenant_owner, security_administrator,
 // investigator, case_approver, popia_information_officer, hr_partner, auditor,
 // employee, eride_support_engineer. tenant_owner is the closest equivalent to
-// a top-level admin and is what this script assigns.
+// a top-level admin and is what this script assigns, alongside investigator.
 
 import { eq } from "drizzle-orm";
 import {
@@ -38,6 +38,9 @@ const TENANT_SLUG = "eride-technologies";
 const TENANT_NAME = "Eride Technologies";
 const ADMIN_EMAIL = "admin@eride-technologies.test";
 const DEV_LOCAL_ORIGIN = "http://localhost:8080";
+
+// Roles held by the seeded admin user.
+const ADMIN_ROLES = ["tenant_owner", "investigator"] as const;
 
 // Canonical role_name enum values (lib/db/src/schema/users.ts) — do not rename
 // without an ADR, per that file's own comment.
@@ -161,25 +164,32 @@ async function main() {
     )[0];
   console.log(`  \u2713 Admin user ${adminUser.email} (${adminUser.id})`);
 
-  // 5. Role assignment: admin user -> tenant_owner.
-  const [ownerRole] = await db
-    .select()
-    .from(rolesTable)
-    .where(eq(rolesTable.name, "tenant_owner"))
-    .limit(1);
-  const [existingAssignment] = await db
-    .select()
-    .from(roleAssignmentsTable)
-    .where(eq(roleAssignmentsTable.userId, adminUser.id))
-    .limit(1);
-  if (!existingAssignment) {
-    await db.insert(roleAssignmentsTable).values({
-      tenantId: tenant.id,
-      userId: adminUser.id,
-      roleId: ownerRole.id,
-    });
+  // 5. Role assignments: admin user -> tenant_owner + investigator.
+  // investigator is granted alongside tenant_owner because POST /v1/cases is
+  // gated by requireRole("security_administrator", "investigator") \u2014 without it
+  // the seeded admin can't exercise case creation in the investigator console.
+  for (const roleName of ADMIN_ROLES) {
+    const [role] = await db
+      .select()
+      .from(rolesTable)
+      .where(eq(rolesTable.name, roleName))
+      .limit(1);
+    await db
+      .insert(roleAssignmentsTable)
+      .values({
+        tenantId: tenant.id,
+        userId: adminUser.id,
+        roleId: role.id,
+      })
+      .onConflictDoNothing({
+        target: [
+          roleAssignmentsTable.tenantId,
+          roleAssignmentsTable.userId,
+          roleAssignmentsTable.roleId,
+        ],
+      });
+    console.log(`  \u2713 Role assignment: ${adminUser.email} -> ${roleName}`);
   }
-  console.log(`  \u2713 Role assignment: ${adminUser.email} -> tenant_owner`);
 
   // 6. OIDC config stub — inactive until Phase 2 supplies real IdP values
   // (OIDC_ISSUER_URL / OIDC_CLIENT_ID / OIDC_CLIENT_SECRET). Its presence lets
