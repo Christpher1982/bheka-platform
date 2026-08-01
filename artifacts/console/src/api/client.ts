@@ -29,10 +29,10 @@ export class ApiError extends Error {
   }
 }
 
-// Default matches the api-server's own default PORT (see src/lib/config.ts).
-// Set VITE_API_BASE_URL="" to talk to a same-origin /api mount instead.
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+// Uses Vite's dev-server proxy (see vite.config.ts server.proxy).
+// Requests to /api are forwarded to the api-server on port 8080 at build time,
+// so the browser never sees a cross-origin request.
+const API_BASE_URL = "";
 
 export type QueryParams = Record<string, string | number | boolean | undefined>;
 

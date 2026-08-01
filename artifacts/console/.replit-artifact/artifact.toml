@@ -1,24 +1,28 @@
-kind = "app"
+kind = "web"
 previewPath = "/"
 title = "Investigator Console"
+description = "The Bheka investigator dashboard — a browser-based interface for managing cases, reviewing detections, approving tier escalations, viewing evidence, and handling POPIA transparency requests. Used by investigators, approvers, and information officers at Eride Technologies."
 version = "1.0.0"
-id = "kQ2mXbT9vRc4LpAe7NwYs"
+id = "artifacts/console"
+router = "path"
 
 [[services]]
-localPort = 5173
-name = "Investigator Console"
-paths = ["/"]
-
-[services.env]
-PORT = "5173"
+name = "web"
+paths = [ "/" ]
+localPort = 23876
 
 [services.development]
 run = "pnpm --filter @workspace/console run dev"
 
 [services.production]
+build = [ "pnpm", "--filter", "@workspace/console", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/console/dist/public"
 
-[services.production.build]
-args = ["pnpm", "--filter", "@workspace/console", "run", "build"]
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
 
-[services.production.build.env]
-NODE_ENV = "production"
+[services.env]
+PORT = "23876"
+BASE_PATH = "/"
