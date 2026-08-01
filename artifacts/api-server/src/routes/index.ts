@@ -6,6 +6,7 @@ import healthRouter from "./v1/health.js";
 import oidcRouter from "./auth/oidc.js";
 import webauthnRouter from "./auth/webauthn.js";
 import scimRouter from "./auth/scim.js";
+import devLoginRouter from "./auth/dev-login.js";
 import tenantsRouter from "./v1/tenants.js";
 import sitesRouter from "./v1/sites.js";
 import usersRouter from "./v1/users.js";
@@ -25,6 +26,8 @@ router.use(healthRouter);
 router.use(oidcRouter);
 router.use(webauthnRouter);
 router.use(scimRouter);
+// Gated to NODE_ENV=development inside the handler itself (404s otherwise).
+router.use(devLoginRouter);
 router.use(tenantsRouter);
 router.use(sitesRouter);
 router.use(usersRouter);

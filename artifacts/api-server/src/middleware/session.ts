@@ -25,9 +25,13 @@ function sessionKey(sid: string): string {
   return `session:${sid}`;
 }
 
+// `secure` must be gated on NODE_ENV: browsers and curl silently drop
+// `Secure` cookies sent over plain http://, so an unconditional `true` here
+// breaks every local test against http://localhost — the cookie is set in
+// the response but never comes back on the next request.
 const SESSION_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
-  secure: true,
+  secure: process.env.NODE_ENV === "production",
   sameSite: "lax",
   path: "/",
   maxAge: SESSION_IDLE_TTL_S * 1000,
