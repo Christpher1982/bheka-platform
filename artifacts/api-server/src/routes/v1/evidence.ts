@@ -24,6 +24,7 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
+import { publishEvent } from "@workspace/nats-client";
 import {
   db,
   evidenceTable,
@@ -272,13 +273,13 @@ router.post(
     }
 
     // Record the view (insert-only; RLS prevents UPDATE/DELETE on evidence_views).
-    await withTenantContext(tenantId, (tx) =>
+    const [evidenceView] = await withTenantContext(tenantId, (tx) =>
       tx.insert(evidenceViewsTable).values({
         tenantId,
         evidenceId,
         viewerUserId,
         sessionId: req.headers["x-session-id"] as string | undefined,
-      }),
+      }).returning(),
     );
 
     await writeAuditLog({
@@ -292,7 +293,20 @@ router.post(
       metadata: { caseId: evidence.caseId, tier: evidence.tier },
     });
 
-    // TODO: emit bheka.evidence.viewed.v1 to NATS JetStream (EVIDENCE stream).
+    await publishEvent({
+      event_id: uuidv7(),
+      schema_version: "bheka.evidence.viewed.v1",
+      occurred_at: new Date().toISOString(),
+      producer: "bheka-case",
+      data: {
+        evidence_view_id: evidenceView!.id,
+        evidence_id: evidenceId,
+        case_id: evidence.caseId,
+        tenant_id: tenantId,
+        viewer_user_id: viewerUserId,
+        tier: evidence.tier as 1 | 2 | 3,
+      },
+    });
 
     res.json({
       evidenceId,
@@ -398,8 +412,22 @@ router.post(
       },
     });
 
-    // TODO: emit bheka.evidence.exported.v1 to NATS JetStream (EVIDENCE stream).
     // bheka-notify consumes this event and delivers a signed download URL to the requester.
+    await publishEvent({
+      event_id: uuidv7(),
+      schema_version: "bheka.evidence.exported.v1",
+      occurred_at: new Date().toISOString(),
+      producer: "bheka-case",
+      data: {
+        export_id: exportId,
+        evidence_id: evidenceId,
+        case_id: evidence.caseId,
+        tenant_id: tenantId,
+        requester_user_id: viewerUserId,
+        tier: evidence.tier as 1 | 2 | 3,
+        export_reason: parsed.data?.exportReason,
+      },
+    });
 
     res.status(202).json({
       exportId,

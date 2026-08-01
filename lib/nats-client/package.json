@@ -1,0 +1,16 @@
+{
+  "name": "@workspace/nats-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "nats": "^2.29.3",
+    "uuidv7": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}

@@ -20,6 +20,9 @@ const ConfigSchema = z.object({
   WEBAUTHN_RP_ORIGIN: z
     .string()
     .url("WEBAUTHN_RP_ORIGIN must be a valid HTTPS URL"),
+  // Optional — when absent NATS publishing is a no-op (dev-friendly).
+  // Set to a nats:// or tls:// URL to enable the event bus.
+  NATS_URL: z.string().optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

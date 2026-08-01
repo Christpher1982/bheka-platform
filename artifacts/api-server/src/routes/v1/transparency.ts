@@ -18,6 +18,8 @@
 // The Information Officer resolves requests via PATCH.
 
 import { Router, type IRouter } from "express";
+import { uuidv7 } from "uuidv7";
+import { publishEvent } from "@workspace/nats-client";
 import { z } from "zod";
 import { and, eq, gt, inArray } from "drizzle-orm";
 import {
@@ -317,7 +319,37 @@ router.post(
       metadata: { requestType: parsed.data.requestType },
     });
 
-    // TODO: emit bheka.notice.issued.v1 (to IO) via NATS JetStream when a deletion DSR is submitted.
+    // For deletion requests: create a receipt notice for the data subject and
+    // emit bheka.notice.issued.v1 so bheka-notify can deliver it.
+    // Other DSR types (access, correction, objection) are handled by the IO manually.
+    if (parsed.data.requestType === "deletion") {
+      const [notice] = await withTenantContext(tenantId, (tx) =>
+        tx.insert(transparencyNoticesTable).values({
+          tenantId,
+          userId,
+          noticeType: "data_subject_request_response",
+          title: "Data Erasure Request Received",
+          body: `Your request to erase your personal data has been received (reference: ${dsr!.id}). We will process your request within 21 days as required by POPIA.`,
+          language: "en",
+        }).returning(),
+      );
+
+      await publishEvent({
+        event_id: uuidv7(),
+        schema_version: "bheka.notice.issued.v1",
+        occurred_at: new Date().toISOString(),
+        producer: "bheka-case",
+        data: {
+          notice_id: notice!.id,
+          tenant_id: tenantId,
+          user_id: userId,
+          notice_type: "data_subject_request_response",
+          language: "en",
+          issued_at: new Date().toISOString(),
+          delivery_channels: ["in_app"],
+        },
+      });
+    }
 
     res.status(201).json({
       id: dsr!.id,

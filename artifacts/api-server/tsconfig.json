@@ -17,6 +17,9 @@
     },
     {
       "path": "../../lib/vault-client"
+    },
+    {
+      "path": "../../lib/nats-client"
     }
   ]
 }

@@ -26,6 +26,8 @@ import { writeAuditLog } from "../../lib/audit-writer.js";
 import { sendProblem, Problems } from "../../lib/problem.js";
 import { requireSession } from "../../middleware/require-session.js";
 import { requireStepUp } from "../../middleware/require-stepup.js";
+import { uuidv7 } from "uuidv7";
+import { publishEvent, type ApprovalSubjectType } from "@workspace/nats-client";
 
 const router: IRouter = Router();
 
@@ -163,11 +165,25 @@ router.post(
       metadata: { caseId: approval.caseId, subjectType: approval.subjectType },
     });
 
-    // TODO: emit bheka.approval.granted.v1 to NATS JetStream (CASE stream).
-    // bheka-case subscribes and — once all approvals for this subject are granted —
-    // updates case.current_tier and emits bheka.case.tier_escalated.v1.
-    // The gateway intentionally does not perform the tier update directly
-    // (009_API_SURFACE section 9, AI constraint §4).
+    // bheka-case subscribes to this event and — once all approvals for a
+    // tier_escalation subject are granted — updates case.current_tier and
+    // emits bheka.case.tier_escalated.v1. The gateway does not perform the
+    // tier update directly (009_API_SURFACE section 9).
+    await publishEvent({
+      event_id: uuidv7(),
+      schema_version: "bheka.approval.granted.v1",
+      occurred_at: new Date().toISOString(),
+      producer: "bheka-case",
+      data: {
+        approval_id: updated!.id,
+        case_id: updated!.caseId,
+        tenant_id: tenantId,
+        subject_type: updated!.subjectType as ApprovalSubjectType,
+        approver_user_id: actorId,
+        is_information_officer_approval: updated!.isInformationOfficerApproval,
+        decision_notes: parsed.data?.decisionNotes,
+      },
+    });
 
     res.json({
       id: updated!.id,

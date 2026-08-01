@@ -16,6 +16,7 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
+import { publishEvent } from "@workspace/nats-client";
 import { createHash } from "node:crypto";
 import {
   db,
@@ -287,8 +288,21 @@ router.post(
       metadata: { endpointId: endpoint.id, platform, agentVersionId },
     });
 
-    // TODO: emit bheka.agent.enrolled.v1 to NATS JetStream (AGENT stream).
-    // Deferred until bheka-nats client is built (010_EVENT_BUS_AND_TOPICS section 2).
+    await publishEvent({
+      event_id: uuidv7(),
+      schema_version: "bheka.agent.enrolled.v1",
+      occurred_at: new Date().toISOString(),
+      producer: "bheka-gateway",
+      data: {
+        agent_id: agent.id,
+        endpoint_id: endpoint.id,
+        tenant_id: tenantId,
+        site_id: endpoint.siteId,
+        platform,
+        agent_version_id: agentVersionId,
+        certificate_fingerprint: certFingerprint,
+      },
+    });
 
     res.status(201).json({
       agentId: agent.id,
@@ -332,8 +346,20 @@ router.post(
       .set({ lastHeartbeatAt: new Date(), updatedAt: new Date() })
       .where(eq(agentsTable.id, agentId));
 
-    // TODO: emit bheka.agent.heartbeat.v1 to NATS JetStream (AGENT stream).
-    // Deferred until bheka-nats client is built (010_EVENT_BUS_AND_TOPICS section 2).
+    await publishEvent({
+      event_id: uuidv7(),
+      schema_version: "bheka.agent.heartbeat.v1",
+      occurred_at: new Date().toISOString(),
+      producer: "bheka-gateway",
+      data: {
+        agent_id: req.agent!.id,
+        tenant_id: req.agent!.tenantId,
+        endpoint_id: req.agent!.endpointId,
+        current_tier: parsed.data?.currentTier,
+        buffer_used_bytes: parsed.data?.bufferUsedBytes,
+        agent_version: parsed.data?.agentVersion,
+      },
+    });
 
     res.status(204).end();
   },

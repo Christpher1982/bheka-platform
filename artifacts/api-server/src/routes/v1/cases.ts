@@ -36,6 +36,7 @@ import { requireSession } from "../../middleware/require-session.js";
 import { requireRole } from "../../middleware/require-role.js";
 import { requireStepUp } from "../../middleware/require-stepup.js";
 import { uuidv7 } from "uuidv7";
+import { publishEvent } from "@workspace/nats-client";
 
 const router: IRouter = Router();
 
@@ -141,7 +142,20 @@ router.post(
       metadata: { subjectUserId: parsed.data.subjectUserId, title: parsed.data.title },
     });
 
-    // TODO: emit bheka.case.opened.v1 to NATS JetStream (CASE stream).
+    await publishEvent({
+      event_id: uuidv7(),
+      schema_version: "bheka.case.opened.v1",
+      occurred_at: new Date().toISOString(),
+      producer: "bheka-case",
+      data: {
+        case_id: kase!.id,
+        tenant_id: kase!.tenantId,
+        subject_user_id: kase!.subjectUserId,
+        opened_by_user_id: kase!.openedByUserId,
+        initial_tier: 1,
+        title: kase!.title ?? undefined,
+      },
+    });
 
     res.status(201).json({
       id: kase!.id,
@@ -536,7 +550,26 @@ router.post(
       },
     });
 
-    // TODO: emit bheka.approval.requested.v1 for each approval to NATS (CASE stream).
+    await Promise.all(
+      createdApprovals.map((a) =>
+        publishEvent({
+          event_id: uuidv7(),
+          schema_version: "bheka.approval.requested.v1",
+          occurred_at: new Date().toISOString(),
+          producer: "bheka-case",
+          data: {
+            approval_id: a.id,
+            case_id: a.caseId,
+            tenant_id: tenantId,
+            subject_type: "tier_escalation",
+            approver_user_id: a.approverUserId,
+            requested_by_user_id: actorId,
+            is_information_officer_approval: a.isInformationOfficerApproval,
+            expires_at: a.expiresAt!.toISOString(),
+          },
+        }),
+      ),
+    );
 
     res.status(201).json({
       caseId,
