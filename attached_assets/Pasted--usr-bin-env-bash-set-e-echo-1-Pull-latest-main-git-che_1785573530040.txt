@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -e
+
+echo "=== 1. Pull latest main ==="
+git checkout main
+git pull origin main
+echo "Node version:"
+node -v
+
+echo "=== 2. Install deps ==="
+corepack enable || true
+pnpm install
+
+echo "=== 3. Set/derive env vars for this shell session ==="
+export NODE_ENV=development
+export PORT=8080
+export SESSION_SECRET="$(openssl rand -hex 32)"
+
+# Replit's public dev domain for this Repl (used for WebAuthn + CORS)
+export REPLIT_DOMAIN="${REPLIT_DEV_DOMAIN:-localhost}"
+export WEBAUTHN_RP_ID="$REPLIT_DOMAIN"
+export WEBAUTHN_RP_ORIGIN="https://$REPLIT_DOMAIN"
+export ALLOWED_ORIGINS="https://$REPLIT_DOMAIN,http://localhost:5173,http://localhost:8080"
+
+echo "Derived REPLIT_DOMAIN=$REPLIT_DOMAIN"
+echo "WEBAUTHN_RP_ORIGIN=$WEBAUTHN_RP_ORIGIN"
+echo "ALLOWED_ORIGINS=$ALLOWED_ORIGINS"
+
+if [ -z "$DATABASE_URL" ]; then
+  echo "!! DATABASE_URL is not set in this shell. Add it in Replit Secrets (lock icon) or provision Replit's Postgres/Database tool, then re-run this script."
+  exit 1
+fi
+if [ -z "$REDIS_URL" ]; then
+  echo "!! REDIS_URL is not set in this shell. Add it in Replit Secrets if you have a Redis add-on, then re-run this script. (If no Redis is available on your plan, tell me and I'll check for a fallback in the code.)"
+  exit 1
+fi
+
+echo "=== 4. Migrate + seed database ==="
+pnpm --config.verify-deps-before-run=false run db:push || npx drizzle-kit push --force
+pnpm --config.verify-deps-before-run=false run seed:dev || npx tsx scripts/src/seed-dev.ts
+
+echo "=== 5. Start API server (port 8080) ==="
+pkill -f "filter api dev" 2>/dev/null || true
+nohup pnpm --filter api dev > /tmp/api.log 2>&1 &
+sleep 6
+echo "--- API health check ---"
+curl -s http://localhost:8080/api/v1/healthz || echo "API health check failed — see /tmp/api.log"
+echo ""
+echo "--- last 20 lines of api.log ---"
+tail -n 20 /tmp/api.log
+
+echo "=== 6. Start console dev server (port 5173) ==="
+pkill -f "filter console dev" 2>/dev/null || true
+nohup pnpm --filter console dev -- --host 0.0.0.0 > /tmp/console.log 2>&1 &
+sleep 6
+echo "--- last 20 lines of console.log ---"
+tail -n 20 /tmp/console.log
+
+echo ""
+echo "=== DONE ==="
+echo "Open the console in Replit's webview (or the forwarded URL for port 5173)."
+echo "Log in with: admin@eride-technologies.test (dev-login form)."
+echo "If the login page hangs or CORS errors show in the browser console, tell me the exact console URL you're loading and I'll fix ALLOWED_ORIGINS."
