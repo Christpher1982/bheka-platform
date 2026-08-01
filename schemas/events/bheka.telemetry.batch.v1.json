@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.telemetry.batch.v1.json",
+  "title": "bheka.telemetry.batch.v1",
+  "description": "Emitted by bheka-ingest when it has persisted a batch of telemetry events from an agent into ClickHouse. Stream: TELEMETRY. Consumers: bheka-policy (rule evaluation trigger). This event carries only ClickHouse row identifiers — no event content — consistent with the tier-boundary rule in 008_DATA_MODEL section 4. Retention: 7 days (short-lived trigger signal; the durable record is in ClickHouse with 90-180 day TTL per table).",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate consumers on this field." },
+    "schema_version": { "type": "string", "const": "bheka.telemetry.batch.v1" },
+    "occurred_at": { "type": "string", "format": "date-time", "description": "ISO 8601 / RFC 3339 timestamp in UTC at which bheka-ingest completed the batch write." },
+    "producer": { "type": "string", "const": "bheka-ingest" },
+    "data": {
+      "type": "object",
+      "required": ["agent_id", "tenant_id", "endpoint_id", "tier", "clickhouse_row_ids", "event_count"],
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": { "type": "string", "format": "uuid", "description": "UUIDv7 of the agent that produced this batch." },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "endpoint_id": { "type": "string", "format": "uuid" },
+        "tier": {
+          "type": "integer",
+          "enum": [1, 2, 3],
+          "description": "Visibility tier of the events in this batch (CANON section 4). All events in a single batch share the same tier."
+        },
+        "clickhouse_row_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "ClickHouse row identifiers for each event in this batch. bheka-policy uses these to locate events during rule evaluation. No event content is included here (008_DATA_MODEL section 4, tier-boundary rule)."
+        },
+        "event_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of events in this batch. Must equal clickhouse_row_ids.length."
+        }
+      }
+    }
+  }
+}

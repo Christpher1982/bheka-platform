@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.evidence.exported.v1.json",
+  "title": "bheka.evidence.exported.v1",
+  "description": "Emitted by bheka-case when POST /evidence/{evidenceId}/export is accepted and the export job is initiated. Stream: EVIDENCE. Consumers: bheka-notify (deliver signed download URL to requester), audit/compliance reporting pipeline. One event per export request.",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate on this field." },
+    "schema_version": { "type": "string", "const": "bheka.evidence.exported.v1" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "const": "bheka-case" },
+    "data": {
+      "type": "object",
+      "required": ["export_id", "evidence_id", "case_id", "tenant_id", "requester_user_id", "tier"],
+      "additionalProperties": false,
+      "properties": {
+        "export_id": { "type": "string", "format": "uuid", "description": "UUIDv7 identifying this export job. Used by bheka-notify to correlate the signed URL delivery." },
+        "evidence_id": { "type": "string", "format": "uuid" },
+        "case_id": { "type": "string", "format": "uuid" },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "requester_user_id": { "type": "string", "format": "uuid" },
+        "tier": { "type": "integer", "enum": [1, 2, 3] },
+        "export_reason": { "type": "string", "description": "Optional requester-supplied reason for the export (audit trail)." }
+      }
+    }
+  }
+}

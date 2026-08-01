@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.evidence.viewed.v1.json",
+  "title": "bheka.evidence.viewed.v1",
+  "description": "Emitted by bheka-case when POST /evidence/{evidenceId}/view succeeds and an evidence_views row is created. Stream: EVIDENCE. Consumers: audit/compliance reporting pipeline, bheka-notify (high-sensitivity view alerting). One event per view — every successful view call is a distinct event even for repeated views of the same evidence item.",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate on this field." },
+    "schema_version": { "type": "string", "const": "bheka.evidence.viewed.v1" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "const": "bheka-case" },
+    "data": {
+      "type": "object",
+      "required": ["evidence_view_id", "evidence_id", "case_id", "tenant_id", "viewer_user_id", "tier"],
+      "additionalProperties": false,
+      "properties": {
+        "evidence_view_id": { "type": "string", "format": "uuid", "description": "UUIDv7 of the evidence_views row (insert-only)." },
+        "evidence_id": { "type": "string", "format": "uuid" },
+        "case_id": { "type": "string", "format": "uuid" },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "viewer_user_id": { "type": "string", "format": "uuid", "description": "The user who viewed the evidence." },
+        "tier": { "type": "integer", "enum": [1, 2, 3], "description": "Visibility tier of the viewed evidence." }
+      }
+    }
+  }
+}

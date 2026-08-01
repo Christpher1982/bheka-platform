@@ -4,3 +4,5 @@
 - [Phase 4 Endpoints + Agents](phase4-endpoints-agents.md) — enrolmentToken Redis pattern, agentMTLS middleware, req.params as-string cast, ring progression, Vault-required enrolment, event schema stubs.
 - [Phase 5 Policies + Detections](phase5-policies-detections.md) — Drizzle .set() typed spread pattern, Tier 3 dual-auth API+DB dual check, conditionJson opacity, detection triage timestamps, event schema producer attribution.
 - [Phase 6 Cases + Approvals](phase6-cases-approvals.md) — tier escalation request-then-approve invariant, IO approver role verification, approval grant/deny designated-approver check, no self-approval, event schema producer attribution.
+- [Phase 7 Evidence](phase7-evidence.md) — metadata never exposes DEK/s3 fields, Tier 3 access requires explicit grant, crypto-shredded → 410, export is async 202, vault unavailable → 503.
+- [Phase 8+9 Transparency + Integrations](phase8-phase9-transparency-integrations.md) — BhekaSession has no roles field (query DB instead), Drizzle inArray enum literals, webhook secretHash write-only select, KEY stream blocked, all 17 event schemas complete.

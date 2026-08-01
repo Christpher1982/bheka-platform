@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.notice.issued.v1.json",
+  "title": "bheka.notice.issued.v1",
+  "description": "Emitted by bheka-case (via bheka-notify orchestration) when a transparency_notice row is created and delivered to the data subject. CANON section 5 refusal 8: monitoring is never silent. Stream: NOTICE. Consumers: bheka-notify (delivery channel selection — email, WhatsApp, in-app), compliance audit pipeline. One event per notice per recipient (localisation creates separate events per language).",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate on this field." },
+    "schema_version": { "type": "string", "const": "bheka.notice.issued.v1" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "const": "bheka-case" },
+    "data": {
+      "type": "object",
+      "required": [
+        "notice_id", "tenant_id", "user_id",
+        "notice_type", "language", "issued_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "notice_id": { "type": "string", "format": "uuid", "description": "UUIDv7 of the transparency_notices row." },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "user_id": { "type": "string", "format": "uuid", "description": "The data subject receiving this notice." },
+        "notice_type": {
+          "type": "string",
+          "enum": ["deployment", "tier_2_activation", "tier_3_activation", "conclusion_disclosure", "policy_change", "breach_notice", "data_subject_request_response"],
+          "description": "Maps directly to the notice_type enum in transparency_notices (018_NOTIFICATIONS_AND_TRANSPARENCY)."
+        },
+        "language": {
+          "type": "string",
+          "description": "BCP 47 language tag (e.g. 'en', 'zu', 'af', 'st', 'xh'). One of the five official SA languages per CANON section 16.",
+          "examples": ["en", "zu", "af", "st", "xh"]
+        },
+        "issued_at": { "type": "string", "format": "date-time", "description": "When the notice was generated. Distinct from acknowledged_at which the subject sets." },
+        "delivery_channels": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["email", "whatsapp", "in_app"] },
+          "description": "Channels bheka-notify should use to deliver this notice. Empty means in_app only.",
+          "default": []
+        }
+      }
+    }
+  }
+}

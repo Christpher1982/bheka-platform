@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.evidence.sealed.v1.json",
+  "title": "bheka.evidence.sealed.v1",
+  "description": "Emitted by bheka-case when a new evidence row is created and sealed (HPKE-encrypted, written to S3, row inserted in PostgreSQL). Stream: EVIDENCE. Consumers: bheka-console (case evidence list), retention scheduler (internal to bheka-case). One event per evidence row.",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate on this field." },
+    "schema_version": { "type": "string", "const": "bheka.evidence.sealed.v1" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "const": "bheka-case" },
+    "data": {
+      "type": "object",
+      "required": ["evidence_id", "case_id", "tenant_id", "tier", "content_type", "key_version", "hash_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "evidence_id": { "type": "string", "format": "uuid", "description": "UUIDv7 of the evidence row." },
+        "case_id": { "type": "string", "format": "uuid" },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "tier": { "type": "integer", "enum": [1, 2, 3], "description": "Visibility tier at which this evidence was collected." },
+        "content_type": { "type": "string", "description": "MIME type of the encrypted payload." },
+        "key_version": { "type": "string", "description": "Vault key version used to seal the DEK (CANON section 6)." },
+        "hash_sha256": { "type": "string", "description": "SHA-256 of the plaintext content before encryption. Used for integrity verification on view." }
+      }
+    }
+  }
+}

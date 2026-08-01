@@ -14,6 +14,10 @@ import policiesRouter from "./v1/policies.js";
 import detectionsRouter from "./v1/detections.js";
 import casesRouter from "./v1/cases.js";
 import approvalsRouter from "./v1/approvals.js";
+import evidenceRouter from "./v1/evidence.js";
+import transparencyRouter from "./v1/transparency.js";
+import integrationsRouter from "./v1/integrations.js";
+import webhooksRouter from "./v1/webhooks.js";
 
 const router: IRouter = Router();
 
@@ -29,5 +33,9 @@ router.use(policiesRouter);
 router.use(detectionsRouter);
 router.use(casesRouter);
 router.use(approvalsRouter);
+router.use(evidenceRouter);
+router.use(transparencyRouter);
+router.use(integrationsRouter);
+router.use(webhooksRouter);
 
 export default router;

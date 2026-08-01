@@ -151,4 +151,28 @@ export const Problems = {
         "There is no further ring to advance to.",
     };
   },
+
+  cryptoShredded(): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/crypto-shredded`,
+      title: "Evidence permanently unrecoverable",
+      status: 410,
+      detail:
+        "The encryption key covering this evidence has been destroyed (POPIA s14 retention " +
+        "enforcement). The evidence payload is permanently unrecoverable. " +
+        "Metadata and audit records remain intact.",
+    };
+  },
+
+  evidenceAccessDenied(): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/evidence-access-denied`,
+      title: "Evidence access not authorised",
+      status: 403,
+      detail:
+        "You do not hold a valid access grant for this evidence item. " +
+        "Tier 3 evidence requires an explicit time-bounded grant. " +
+        "Request access via the case approval workflow.",
+    };
+  },
 } as const;
