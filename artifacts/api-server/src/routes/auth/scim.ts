@@ -100,10 +100,9 @@ const ScimPatch = z.object({
 });
 
 const router: IRouter = Router();
-router.use(requireScimToken);
 
 // POST /scim/v2/Users — provision a new user
-router.post("/scim/v2/Users", async (req, res): Promise<void> => {
+router.post("/scim/v2/Users", requireScimToken, async (req, res): Promise<void> => {
   const parsed = ScimUserCreate.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
@@ -158,7 +157,7 @@ router.post("/scim/v2/Users", async (req, res): Promise<void> => {
 });
 
 // PATCH /scim/v2/Users/:id — partial update (primary use: deprovisioning)
-router.patch("/scim/v2/Users/:id", async (req, res): Promise<void> => {
+router.patch("/scim/v2/Users/:id", requireScimToken, async (req, res): Promise<void> => {
   const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const tenantId = req.scimTenantId!;
 
@@ -209,7 +208,7 @@ router.patch("/scim/v2/Users/:id", async (req, res): Promise<void> => {
 });
 
 // GET /scim/v2/Users — list users
-router.get("/scim/v2/Users", async (req, res): Promise<void> => {
+router.get("/scim/v2/Users", requireScimToken, async (req, res): Promise<void> => {
   const tenantId = req.scimTenantId!;
 
   const rows = await db
