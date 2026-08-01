@@ -19,7 +19,7 @@
 
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { approvalsTable } from "@workspace/db";
 import { withTenantContext } from "../../lib/tenant-context.js";
 import { writeAuditLog } from "../../lib/audit-writer.js";
@@ -30,6 +30,66 @@ import { uuidv7 } from "uuidv7";
 import { publishEvent, type ApprovalSubjectType } from "@workspace/nats-client";
 
 const router: IRouter = Router();
+
+// ── GET /v1/approvals ────────────────────────────────────────────────────────
+// Cursor-paginated tenant-scoped list. Optional filters: status, caseId.
+// Read-only and not role-gated, matching GET /v1/cases and GET /v1/detections:
+// approvals carry no evidence content, only workflow state.
+
+router.get(
+  "/v1/approvals",
+  requireSession,
+  async (req, res): Promise<void> => {
+    const tenantId = req.session!.tenantId;
+
+    const rawLimit = Number(req.query.limit ?? 50);
+    const limit = Math.min(Math.max(1, rawLimit), 200);
+    const cursor = req.query.cursor as string | undefined;
+    const filterStatus = req.query.status as string | undefined;
+    const filterCaseId = req.query.caseId as string | undefined;
+
+    const rows = await withTenantContext(tenantId, (tx) =>
+      tx
+        .select()
+        .from(approvalsTable)
+        .where(
+          and(
+            eq(approvalsTable.tenantId, tenantId),
+            cursor ? gt(approvalsTable.id, cursor) : undefined,
+            filterStatus
+              ? sql`${approvalsTable.status} = ${filterStatus}::approval_status`
+              : undefined,
+            filterCaseId ? eq(approvalsTable.caseId, filterCaseId) : undefined,
+          ),
+        )
+        .orderBy(approvalsTable.id)
+        .limit(limit + 1),
+    );
+
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? items[items.length - 1]!.id : null;
+
+    res.json({
+      items: items.map((a) => ({
+        id: a.id,
+        tenantId: a.tenantId,
+        caseId: a.caseId,
+        subjectType: a.subjectType,
+        approverUserId: a.approverUserId,
+        requestedByUserId: a.requestedByUserId,
+        status: a.status,
+        isInformationOfficerApproval: a.isInformationOfficerApproval,
+        expiresAt: a.expiresAt,
+        decisionAt: a.decisionAt,
+        decisionNotes: a.decisionNotes,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
+      })),
+      pageInfo: { nextCursor, hasMore },
+    });
+  },
+);
 
 // ── GET /v1/approvals/:approvalId ────────────────────────────────────────────
 

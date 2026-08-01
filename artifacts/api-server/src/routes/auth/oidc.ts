@@ -7,8 +7,15 @@ import { randomBytes } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { Issuer, generators, type Client } from "openid-client";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
-import { db, tenantsTable, oidcConfigTable, usersTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import {
+  db,
+  tenantsTable,
+  oidcConfigTable,
+  usersTable,
+  rolesTable,
+  roleAssignmentsTable,
+} from "@workspace/db";
 import { getSecretValue } from "../../lib/secrets.js";
 import {
   createSession,
@@ -16,6 +23,8 @@ import {
   SESSION_COOKIE,
   SESSION_COOKIE_OPTIONS,
 } from "../../middleware/session.js";
+import { requireSession } from "../../middleware/require-session.js";
+import { withTenantContext } from "../../lib/tenant-context.js";
 import { writeAuditLog } from "../../lib/audit-writer.js";
 import { sendProblem, Problems } from "../../lib/problem.js";
 import { logger } from "../../lib/logger.js";
@@ -226,6 +235,56 @@ router.get("/v1/auth/callback", async (req, res): Promise<void> => {
     logger.error({ err }, "OIDC callback failed");
     sendProblem(res, Problems.internalError());
   }
+});
+
+// GET /api/v1/auth/session
+// Identity of the caller behind the current bheka_sid cookie. The console calls
+// this on boot to decide between the app shell and the login page, and to render
+// the signed-in user. Returns the held role names so the UI can explain up front
+// which actions the caller's roles do not permit.
+router.get("/v1/auth/session", requireSession, async (req, res): Promise<void> => {
+  const { userId, tenantId } = req.session!;
+
+  const [user] = await withTenantContext(tenantId, (tx) =>
+    tx
+      .select({
+        id: usersTable.id,
+        email: usersTable.email,
+        givenName: usersTable.givenName,
+        familyName: usersTable.familyName,
+      })
+      .from(usersTable)
+      .where(and(eq(usersTable.id, userId), eq(usersTable.tenantId, tenantId)))
+      .limit(1),
+  );
+
+  if (!user) {
+    sendProblem(res, Problems.authRequired());
+    return;
+  }
+
+  const assignments = await withTenantContext(tenantId, (tx) =>
+    tx
+      .select({ roleName: rolesTable.name })
+      .from(roleAssignmentsTable)
+      .innerJoin(rolesTable, eq(roleAssignmentsTable.roleId, rolesTable.id))
+      .where(
+        and(
+          eq(roleAssignmentsTable.userId, userId),
+          eq(roleAssignmentsTable.tenantId, tenantId),
+          eq(roleAssignmentsTable.active, true),
+        ),
+      ),
+  );
+
+  res.json({
+    userId: user.id,
+    tenantId,
+    email: user.email,
+    givenName: user.givenName,
+    familyName: user.familyName,
+    roles: assignments.map((a) => a.roleName),
+  });
 });
 
 // POST /api/v1/auth/logout
