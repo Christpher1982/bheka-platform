@@ -11,6 +11,27 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/console: Investigator Console"
+
+[[workflows.workflow]]
+name = "artifacts/console: Investigator Console"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=5173 pnpm --filter @workspace/console run dev"
+waitForPort = 5173
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -29,3 +50,4 @@ REDIS_URL = "redis://localhost:6379"
 WEBAUTHN_RP_ID = "localhost"
 WEBAUTHN_RP_ORIGIN = "http://localhost:8080"
 PORT = "8080"
+ALLOWED_ORIGINS = "https://5173-01bf6586-b687-4c3e-a3d1-f02d9a86b0cd-00-oczr5l4f1y4y.picard.replit.dev,https://8080-01bf6586-b687-4c3e-a3d1-f02d9a86b0cd-00-oczr5l4f1y4y.picard.replit.dev,http://localhost:5173,http://localhost:8080"

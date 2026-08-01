@@ -1,0 +1,57 @@
+That response is incorrect for this workspace — it seems to be coming from Replit's own AI Agent, working from stale or wrong context, not from what's actually on disk here. Here's the direct evidence from this session that contradicts it:
+
+PR #2 — merged into main — added a full @workspace/console package with real pages: login.tsx, cases.tsx, case-detail.tsx, case-new.tsx, users.tsx, sites.tsx, detections.tsx, approvals.tsx, app-shell.tsx — over 3,000 lines of actual UI code, not a mockup.
+
+When you ran the start script yourself, the log explicitly showed:
+
+text
+> @workspace/console@0.0.0 dev /home/runner/workspace/artifacts/console
+> vite dev --host 0.0.0.0
+VITE v7.3.6 ready in 902 ms
+Local: http://localhost:8081/
+That's the real console package by name, not mockup-sandbox. It genuinely started and was serving on 8081.
+
+mockup-sandbox is a separate, unrelated package that only got dragged in because Replit's own "Project" Run/Preview workflow does a recursive pnpm run dev across every package in the workspace — and that's the one that crashed. It has nothing to do with whether your console exists; it clearly does, it's just that the Preview tab was pointed at the wrong process.
+
+So: no need to build anything from scratch. We just need to get back to the console that was already running. It may have been killed when the Preview workflow crashed alongside it. Let's restart it and hit it directly (bypassing Replit's broken Preview tab), rather than through the auto Run button:
+
+
+
+Paste this in the Replit Shell to restart both servers cleanly and verify with curl that the console is actually serving real HTML (not a blank mockup frame):
+
+bash
+echo "=== Kill anything currently running (including whatever Preview's broken workflow started) ==="
+pkill -f "api-server" 2>/dev/null || true
+pkill -f "vite" 2>/dev/null || true
+pkill -f "mockup-sandbox" 2>/dev/null || true
+sleep 2
+
+echo "=== Confirm Redis is up ==="
+redis-cli ping || redis-server --daemonize yes --port 6379 --loglevel warning
+
+echo ""
+echo "=== Start the REAL API server (not mockup-sandbox) ==="
+nohup pnpm --filter @workspace/api-server run dev > /tmp/api.log 2>&1 &
+sleep 8
+tail -n 15 /tmp/api.log
+
+echo ""
+echo "=== Start the REAL console (@workspace/console, artifacts/console) ==="
+(cd artifacts/console && nohup pnpm run dev -- --host 0.0.0.0 > /tmp/console.log 2>&1 &)
+sleep 6
+echo "--- console.log ---"
+tail -n 20 /tmp/console.log
+
+echo ""
+echo "=== Verify locally with curl (should show real HTML with the console's title/app root, not empty) ==="
+echo "--- API health ---"
+curl -s http://localhost:8080/api/v1/healthz
+echo ""
+echo "--- Console root HTML (first 40 lines) ---"
+curl -s http://localhost:8081/ | head -40
+
+echo ""
+echo "=== Public URLs to open in a real browser tab ==="
+echo "Console:  https://8081-$REPLIT_DEV_DOMAIN"
+echo "API:      https://8080-$REPLIT_DEV_DOMAIN/api/v1/healthz"
+Send me the full output — especially the curl HTML for the console. If it shows <title> and a root <div id="root"> referencing the real app bundle, that confirms it's your actual console, not the mockup tool, regardless of what Replit's own Agent claimed.
