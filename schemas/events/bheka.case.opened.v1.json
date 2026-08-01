@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.case.opened.v1.json",
+  "title": "bheka.case.opened.v1",
+  "description": "Emitted by bheka-case (via bheka-gateway REST surface) when a new investigation case is created. Stream: CASE. Consumers: bheka-notify (participant notification), bheka-console. One event per case creation.",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate on this field." },
+    "schema_version": { "type": "string", "const": "bheka.case.opened.v1" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "const": "bheka-case" },
+    "data": {
+      "type": "object",
+      "required": ["case_id", "tenant_id", "subject_user_id", "opened_by_user_id", "initial_tier"],
+      "additionalProperties": false,
+      "properties": {
+        "case_id": { "type": "string", "format": "uuid", "description": "UUIDv7 of the cases row." },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "subject_user_id": { "type": "string", "format": "uuid", "description": "The data subject under investigation." },
+        "opened_by_user_id": { "type": "string", "format": "uuid", "description": "The investigator or administrator who opened the case." },
+        "initial_tier": { "type": "integer", "const": 1, "description": "Cases always open at Tier 1 (CANON section 4)." },
+        "title": { "type": "string", "description": "Case title as set at creation time." }
+      }
+    }
+  }
+}

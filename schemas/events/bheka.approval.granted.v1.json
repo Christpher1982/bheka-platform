@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.approval.granted.v1.json",
+  "title": "bheka.approval.granted.v1",
+  "description": "Emitted by bheka-case when an approver grants an approval (POST /approvals/{id}/grant). Stream: CASE. Consumers: bheka-case itself (internal state check — waits for all approvals on a tier_escalation to be granted before emitting bheka.case.tier_escalated.v1), bheka-notify. Per-approval-subject ordering matters for multi-approver subjects; consumers other than bheka-case must not infer completion from a single grant event (010_EVENT_BUS_AND_TOPICS section 2).",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate on this field." },
+    "schema_version": { "type": "string", "const": "bheka.approval.granted.v1" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "const": "bheka-case" },
+    "data": {
+      "type": "object",
+      "required": [
+        "approval_id", "case_id", "tenant_id",
+        "subject_type", "approver_user_id", "is_information_officer_approval"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "approval_id": { "type": "string", "format": "uuid" },
+        "case_id": { "type": "string", "format": "uuid" },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "subject_type": {
+          "type": "string",
+          "enum": ["tier_escalation", "evidence_export", "evidence_reidentification", "legal_hold_override", "tenant_key_shred"]
+        },
+        "approver_user_id": { "type": "string", "format": "uuid" },
+        "is_information_officer_approval": { "type": "boolean" },
+        "decision_notes": { "type": "string", "description": "Optional approver notes." }
+      }
+    }
+  }
+}

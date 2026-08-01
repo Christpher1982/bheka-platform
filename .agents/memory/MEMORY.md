@@ -3,3 +3,4 @@
 - [Phase 3 Schema + Org API](phase3-schema-and-org-api.md) — All 27 canonical tables complete, structural DB constraints, detections sql import, IO singleton error string, sites/users/roles routes.
 - [Phase 4 Endpoints + Agents](phase4-endpoints-agents.md) — enrolmentToken Redis pattern, agentMTLS middleware, req.params as-string cast, ring progression, Vault-required enrolment, event schema stubs.
 - [Phase 5 Policies + Detections](phase5-policies-detections.md) — Drizzle .set() typed spread pattern, Tier 3 dual-auth API+DB dual check, conditionJson opacity, detection triage timestamps, event schema producer attribution.
+- [Phase 6 Cases + Approvals](phase6-cases-approvals.md) — tier escalation request-then-approve invariant, IO approver role verification, approval grant/deny designated-approver check, no self-approval, event schema producer attribution.

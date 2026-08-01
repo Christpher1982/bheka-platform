@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.approval.requested.v1.json",
+  "title": "bheka.approval.requested.v1",
+  "description": "Emitted by bheka-case when a new approval record is created (one event per approver per escalation request). Stream: CASE. Consumers: bheka-notify (alert eligible approver, including ensuring an IO is notified for Tier 3 escalations). One event per approval request.",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate on this field." },
+    "schema_version": { "type": "string", "const": "bheka.approval.requested.v1" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "const": "bheka-case" },
+    "data": {
+      "type": "object",
+      "required": [
+        "approval_id", "case_id", "tenant_id",
+        "subject_type", "approver_user_id", "requested_by_user_id",
+        "is_information_officer_approval", "expires_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "approval_id": { "type": "string", "format": "uuid", "description": "UUIDv7 of the approvals row." },
+        "case_id": { "type": "string", "format": "uuid" },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "subject_type": {
+          "type": "string",
+          "enum": ["tier_escalation", "evidence_export", "evidence_reidentification", "legal_hold_override", "tenant_key_shred"]
+        },
+        "approver_user_id": { "type": "string", "format": "uuid", "description": "The user who must act on this approval." },
+        "requested_by_user_id": { "type": "string", "format": "uuid", "description": "The user who created the escalation request." },
+        "is_information_officer_approval": { "type": "boolean" },
+        "expires_at": { "type": "string", "format": "date-time", "description": "Bounded approval window expiry (008_DATA_MODEL section 5)." }
+      }
+    }
+  }
+}

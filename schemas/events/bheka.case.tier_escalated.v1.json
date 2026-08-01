@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.bheka.io/events/bheka.case.tier_escalated.v1.json",
+  "title": "bheka.case.tier_escalated.v1",
+  "description": "Emitted by bheka-case only AFTER all required approvals for a tier_escalation subject are granted (010_EVENT_BUS_AND_TOPICS section 2). Never emitted by bheka-gateway directly — tier escalation requires the request-then-approve workflow (009_API_SURFACE §9). Stream: CASE. Consumers: bheka-ingest (instructs agents to raise collection tier), bheka-notify (transparency notice dispatch), eride-vault (policy enforcement point awareness).",
+  "type": "object",
+  "required": ["event_id", "schema_version", "occurred_at", "producer", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "UUIDv7. De-duplicate on this field." },
+    "schema_version": { "type": "string", "const": "bheka.case.tier_escalated.v1" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "const": "bheka-case" },
+    "data": {
+      "type": "object",
+      "required": [
+        "case_id", "tenant_id", "subject_user_id",
+        "from_tier", "to_tier", "approval_ids", "authorised_by"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "case_id": { "type": "string", "format": "uuid" },
+        "tenant_id": { "type": "string", "format": "uuid" },
+        "subject_user_id": { "type": "string", "format": "uuid" },
+        "from_tier": { "type": "integer", "enum": [1, 2], "description": "Tier before escalation." },
+        "to_tier": { "type": "integer", "enum": [2, 3], "description": "Tier after escalation." },
+        "approval_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "format": "uuid" },
+          "description": "All approval IDs that were granted to authorise this escalation."
+        },
+        "authorised_by": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["user_id", "is_information_officer_approval"],
+            "additionalProperties": false,
+            "properties": {
+              "user_id": { "type": "string", "format": "uuid" },
+              "is_information_officer_approval": {
+                "type": "boolean",
+                "description": "True for the approver who satisfied the IO slot (Tier 3 only)."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

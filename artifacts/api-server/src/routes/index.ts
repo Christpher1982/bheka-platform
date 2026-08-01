@@ -12,6 +12,8 @@ import usersRouter from "./v1/users.js";
 import endpointsRouter from "./v1/endpoints.js";
 import policiesRouter from "./v1/policies.js";
 import detectionsRouter from "./v1/detections.js";
+import casesRouter from "./v1/cases.js";
+import approvalsRouter from "./v1/approvals.js";
 
 const router: IRouter = Router();
 
@@ -25,5 +27,7 @@ router.use(usersRouter);
 router.use(endpointsRouter);
 router.use(policiesRouter);
 router.use(detectionsRouter);
+router.use(casesRouter);
+router.use(approvalsRouter);
 
 export default router;
