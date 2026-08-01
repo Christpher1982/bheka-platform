@@ -19,10 +19,10 @@ import {
 import { PageHeader } from "@/components/app-shell";
 import { PaginationControls, useCursorPager } from "@/components/pagination";
 import { QueryState } from "@/components/states";
-import { StatusBadge } from "@/components/status-badge";
+import { SeverityBadge, StatusBadge } from "@/components/status-badge";
 import { listDetections } from "@/api/resources";
 import type { DetectionStatus } from "@/api/types";
-import { formatDateTime, shortId } from "@/lib/format";
+import { formatDateTime, formatRuleName, shortId } from "@/lib/format";
 
 const STATUSES: DetectionStatus[] = [
   "new",
@@ -54,7 +54,7 @@ export function DetectionsPage() {
     <>
       <PageHeader
         title="Detections"
-        description="Written by bheka-policy from telemetry. Detections are never created through the API."
+        description="Raised by the rule engine from agent telemetry. Detections are never created through the API."
         actions={
           <Select value={status} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-44">
@@ -78,37 +78,47 @@ export function DetectionsPage() {
             error={query.error}
             data={query.data}
             isEmpty={(data) => data.items.length === 0}
-            emptyTitle="No detections"
-            emptyDescription="No policy rule has fired for this tenant yet."
+            emptyTitle="No detections yet"
+            emptyDescription={
+              status === ALL
+                ? "No rule has fired for this tenant yet."
+                : `No detections with status "${status.replace(/_/g, " ")}".`
+            }
           >
             {(data) => (
               <>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Detection</TableHead>
+                      <TableHead>Severity</TableHead>
+                      <TableHead>Rule</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Tier</TableHead>
                       <TableHead>Subject</TableHead>
-                      <TableHead>Source events</TableHead>
-                      <TableHead>Raised</TableHead>
+                      <TableHead>Occurred</TableHead>
+                      <TableHead>Summary</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {data.items.map((detection) => (
                       <TableRow key={detection.id}>
-                        <TableCell className="font-mono text-xs">
-                          {shortId(detection.id)}
+                        <TableCell>
+                          <SeverityBadge severity={detection.severity} />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatRuleName(detection.ruleName)}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={detection.status} />
                         </TableCell>
-                        <TableCell>{detection.tier}</TableCell>
                         <TableCell className="font-mono text-xs">
                           {shortId(detection.subjectUserId)}
                         </TableCell>
-                        <TableCell>{detection.sourceEventIds.length}</TableCell>
-                        <TableCell>{formatDateTime(detection.createdAt)}</TableCell>
+                        <TableCell>
+                          {formatDateTime(detection.occurredAt ?? detection.createdAt)}
+                        </TableCell>
+                        <TableCell className="max-w-md text-muted-foreground">
+                          {detection.summary ?? "—"}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

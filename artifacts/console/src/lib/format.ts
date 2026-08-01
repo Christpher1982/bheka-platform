@@ -16,6 +16,15 @@ export function shortId(id: string | null | undefined): string {
   return id.slice(0, 8);
 }
 
+// Rule identifiers arrive snake_case on the wire ("sensitive_keyword").
+export function formatRuleName(name: string | null | undefined): string {
+  if (!name) return "—";
+  return name
+    .split(/[_\s]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function fullName(user: {
   givenName: string | null;
   familyName: string | null;
