@@ -8,6 +8,8 @@
 //
 // Import is type-only: no @workspace/db runtime code (pg, drizzle) is bundled.
 import type {
+  ActivityEvent,
+  ActivityEventMetadata,
   Approval,
   Case,
   CaseParticipant,
@@ -79,6 +81,20 @@ export type DetectionDto = Pick<
   | "createdAt"
   | "updatedAt"
 >;
+
+// GET /v1/detections/:detectionId/evidence joins the activity_events row a
+// v0 rule fired on with the parent detection's analyst-facing fields.
+export type DetectionEvidenceDto = Pick<
+  Jsonified<ActivityEvent>,
+  "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  eventId: ActivityEvent["id"];
+  metadata: ActivityEventMetadata;
+  detection: Pick<
+    Jsonified<Detection>,
+    "id" | "ruleName" | "severity" | "summary" | "status"
+  >;
+};
 
 export type SiteDto = Pick<
   Jsonified<Site>,

@@ -3,6 +3,7 @@
 // Routes:
 //   GET   /v1/detections                        — cursor-paginated list (oidcBearer)
 //   GET   /v1/detections/:detectionId           — single detection (oidcBearer)
+//   GET   /v1/detections/:detectionId/evidence  — full raw event behind the detection (audited)
 //   PATCH /v1/detections/:detectionId           — triage state change (audited)
 //   GET   /v1/users/:userId/risk-scores         — read-only, cursor-paginated (oidcBearer)
 //
@@ -11,12 +12,23 @@
 // section 8) or by the v0 rule engine on agent ingest (see v1/agent-events.ts).
 // The PATCH endpoint is the only write here; it updates triage state only.
 //
+// GET /v1/detections/:detectionId/evidence joins the activity_events row a
+// v0 rule fired on, so an investigator can see the full raw capture behind a
+// detection's short summary. Read access is audited — the underlying metadata
+// can carry Tier 3 content (captured_text), same as activity.ts documents.
+//
 // No WebAuthn step-up required for any route in this group.
 
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, desc, eq, gt, lt, sql } from "drizzle-orm";
-import { db, detectionsTable, riskScoresTable, usersTable } from "@workspace/db";
+import {
+  db,
+  activityEventsTable,
+  detectionsTable,
+  riskScoresTable,
+  usersTable,
+} from "@workspace/db";
 import { withTenantContext } from "../../lib/tenant-context.js";
 import { writeAuditLog } from "../../lib/audit-writer.js";
 import { sendProblem, Problems } from "../../lib/problem.js";
@@ -147,6 +159,106 @@ router.get(
       notes: detection.notes,
       createdAt: detection.createdAt,
       updatedAt: detection.updatedAt,
+    });
+  },
+);
+
+// ── GET /v1/detections/:detectionId/evidence ────────────────────────────────
+// Joins the activity_events row a v0 rule fired on so an investigator can see
+// the full raw capture behind a detection's short (possibly truncated) summary.
+// Read-only. Audited before responding — this can surface Tier 3 content
+// (captured_text), so every view of it must leave an audit_log trail.
+
+router.get(
+  "/v1/detections/:detectionId/evidence",
+  requireSession,
+  async (req, res): Promise<void> => {
+    const tenantId = req.session!.tenantId;
+    const detectionId = req.params.detectionId as string;
+    const actorId = req.session!.userId;
+
+    const [detection] = await withTenantContext(tenantId, (tx) =>
+      tx
+        .select()
+        .from(detectionsTable)
+        .where(
+          and(
+            eq(detectionsTable.id, detectionId),
+            eq(detectionsTable.tenantId, tenantId),
+          ),
+        )
+        .limit(1),
+    );
+
+    if (!detection) {
+      sendProblem(res, Problems.notFound());
+      return;
+    }
+
+    if (!detection.sourceEventId) {
+      sendProblem(
+        res,
+        Problems.notFound(
+          "This detection has no underlying activity event linked to it. " +
+            "Detections raised by bheka-policy reference ClickHouse rows via " +
+            "sourceEventIds instead and do not have full evidence available here.",
+        ),
+      );
+      return;
+    }
+
+    // Mirrors the tenant-scoped activity_events lookup pattern in agent-events.ts.
+    const [event] = await withTenantContext(tenantId, (tx) =>
+      tx
+        .select()
+        .from(activityEventsTable)
+        .where(
+          and(
+            eq(activityEventsTable.id, detection.sourceEventId!),
+            eq(activityEventsTable.tenantId, tenantId),
+          ),
+        )
+        .limit(1),
+    );
+
+    if (!event) {
+      sendProblem(
+        res,
+        Problems.notFound(
+          "The activity event linked to this detection could not be found.",
+        ),
+      );
+      return;
+    }
+
+    // Write the audit entry before responding — no view of raw evidence
+    // without a corresponding audit record (CANON section 9).
+    await writeAuditLog({
+      tenantId,
+      actorId,
+      actorType: "user",
+      action: "detection.evidence_viewed",
+      targetType: "detection",
+      targetId: detectionId,
+      requestId: String(req.headers["x-request-id"] ?? ""),
+      metadata: { sourceEventId: detection.sourceEventId },
+    });
+
+    res.json({
+      eventId: event.id,
+      eventType: event.eventType,
+      occurredAt: event.occurredAt,
+      siteId: event.siteId,
+      subjectUserId: event.subjectUserId,
+      sourceAgentId: event.sourceAgentId,
+      metadata: event.metadata,
+      detection: {
+        id: detection.id,
+        ruleName: detection.ruleName,
+        severity: detection.severity,
+        summary: detection.summary,
+        status: detection.status,
+      },
     });
   },
 );

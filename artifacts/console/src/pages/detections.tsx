@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import {
   Select,
@@ -35,6 +36,7 @@ const ALL = "all";
 export function DetectionsPage() {
   const [status, setStatus] = useState<DetectionStatus | typeof ALL>(ALL);
   const pager = useCursorPager();
+  const [, navigate] = useLocation();
 
   const query = useQuery({
     queryKey: ["detections", status, pager.cursor],
@@ -100,11 +102,15 @@ export function DetectionsPage() {
                   </TableHeader>
                   <TableBody>
                     {data.items.map((detection) => (
-                      <TableRow key={detection.id}>
+                      <TableRow
+                        key={detection.id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/detections/${detection.id}`)}
+                      >
                         <TableCell>
                           <SeverityBadge severity={detection.severity} />
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium hover:underline">
                           {formatRuleName(detection.ruleName)}
                         </TableCell>
                         <TableCell>

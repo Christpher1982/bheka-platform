@@ -9,6 +9,7 @@ import type {
   CaseParticipantDto,
   CaseStatus,
   DetectionDto,
+  DetectionEvidenceDto,
   Paginated,
   RoleAssignmentDto,
   RoleDto,
@@ -74,6 +75,18 @@ export function listDetections(
   query: PageQuery & { status?: string; tier?: number },
 ): Promise<Paginated<DetectionDto>> {
   return apiFetch("/v1/detections", { params: { ...query } });
+}
+
+export function getDetection(detectionId: string): Promise<DetectionDto> {
+  return apiFetch(`/v1/detections/${detectionId}`);
+}
+
+// Full raw event behind a detection's short summary. Fetching this is logged
+// to audit_log server-side (action "detection.evidence_viewed").
+export function getDetectionEvidence(
+  detectionId: string,
+): Promise<DetectionEvidenceDto> {
+  return apiFetch(`/v1/detections/${detectionId}/evidence`);
 }
 
 // ── sites ───────────────────────────────────────────────────────────────────

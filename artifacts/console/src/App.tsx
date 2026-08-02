@@ -8,6 +8,7 @@ import { CasesPage } from "@/pages/cases";
 import { CaseDetailPage } from "@/pages/case-detail";
 import { NewCasePage } from "@/pages/case-new";
 import { DetectionsPage } from "@/pages/detections";
+import { DetectionDetailPage } from "@/pages/detection-detail";
 import { SitesPage } from "@/pages/sites";
 import { UsersPage } from "@/pages/users";
 import { ApprovalsPage } from "@/pages/approvals";
@@ -20,6 +21,7 @@ function Routes() {
       <Route path="/cases/new" component={NewCasePage} />
       <Route path="/cases/:caseId" component={CaseDetailPage} />
       <Route path="/detections" component={DetectionsPage} />
+      <Route path="/detections/:id" component={DetectionDetailPage} />
       <Route path="/sites" component={SitesPage} />
       <Route path="/users" component={UsersPage} />
       <Route path="/approvals" component={ApprovalsPage} />

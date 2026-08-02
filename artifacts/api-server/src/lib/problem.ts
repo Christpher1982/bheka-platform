@@ -66,11 +66,12 @@ export const Problems = {
     };
   },
 
-  notFound(): ProblemDetail {
+  notFound(detail?: string): ProblemDetail {
     return {
       type: `${PROBLEM_BASE}/not-found`,
       title: "Resource not found",
       status: 404,
+      detail,
     };
   },
 
