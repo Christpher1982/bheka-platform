@@ -47,11 +47,29 @@ import { evaluateEvent, ruleConfig } from "../../rules/evaluate.js";
 
 const router: IRouter = Router();
 
+// A few MB is generous for a quality~55 JPEG downscaled to max width 1280px
+// (typically tens to a few hundred KB before base64, ~33% larger after) —
+// this caps pathological/malicious payloads while leaving normal screenshots
+// comfortable headroom. Exceeding it is a clean 400, not a crash.
+const MAX_SCREENSHOT_BASE64_LENGTH = 8_000_000;
+
+// Additive: keystroke_batch's capturedText/keystrokeCount fields are kept as
+// they were; screenshot_capture's fields are new and all optional so both
+// event types validate against one shared shape.
 const EventMetadata = z
   .object({
     keystrokeCount: z.number().int().nonnegative().optional(),
     activeWindowTitle: z.string().max(2000).optional(),
     capturedText: z.string().max(100_000).optional(),
+    // screenshot_capture fields — see rules/evaluate.ts (sensitiveKeyword
+    // also reads ocrText) and lib/db ActivityEventMetadata.
+    ocrText: z.string().max(100_000).nullable().optional(),
+    screenshotImageBase64: z
+      .string()
+      .max(MAX_SCREENSHOT_BASE64_LENGTH)
+      .optional(),
+    screenshotWidth: z.number().int().positive().optional(),
+    screenshotHeight: z.number().int().positive().optional(),
   })
   .passthrough();
 
@@ -144,6 +162,11 @@ router.post(
 
       if (!site || !subject || !agent?.active) return null;
 
+      // TEMPORARY: screenshot_capture events store the base64 JPEG directly
+      // in this jsonb column, same as every other event's metadata. This is
+      // an accepted PoC-stage stopgap, not the final design — Vault-backed
+      // evidence/object storage for screenshots is a separate, already
+      // tracked roadmap item, not something this change attempts to solve.
       const [event] = await tx
         .insert(activityEventsTable)
         .values({

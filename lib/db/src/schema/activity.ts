@@ -24,6 +24,15 @@ export interface ActivityEventMetadata {
   keystrokeCount?: number;
   activeWindowTitle?: string;
   capturedText?: string;
+  // screenshot_capture fields (see routes/v1/agent-events.ts). ocrText is
+  // local-Tesseract output (or null when OCR wasn't available on the
+  // agent's machine); screenshotImageBase64 is a JPEG data payload stored
+  // directly in this jsonb column as a PoC-stage stopgap — see the comment
+  // in agent-events.ts for why this isn't in object storage yet.
+  ocrText?: string | null;
+  screenshotImageBase64?: string;
+  screenshotWidth?: number;
+  screenshotHeight?: number;
   [key: string]: unknown;
 }
 

@@ -97,24 +97,72 @@ export function ActivityDetailPage() {
                   <CardTitle className="text-base">Captured data</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <dl className="grid gap-6 sm:grid-cols-2">
-                    <Field label="Active window title">
-                      {event.metadata.activeWindowTitle ?? "—"}
-                    </Field>
-                    <Field label="Keystroke count">
-                      {event.metadata.keystrokeCount ?? "—"}
-                    </Field>
-                  </dl>
-                  <div className="space-y-1">
-                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Captured text
-                    </dt>
-                    <dd>
-                      <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted p-4 font-mono text-xs">
-                        {event.metadata.capturedText ?? "—"}
-                      </pre>
-                    </dd>
-                  </div>
+                  {event.eventType === "screenshot_capture" ? (
+                    <>
+                      <dl className="grid gap-6 sm:grid-cols-2">
+                        <Field label="Active window title">
+                          {event.metadata.activeWindowTitle ?? "—"}
+                        </Field>
+                        <Field label="Screenshot dimensions">
+                          {event.metadata.screenshotWidth &&
+                          event.metadata.screenshotHeight
+                            ? `${event.metadata.screenshotWidth} × ${event.metadata.screenshotHeight}`
+                            : "—"}
+                        </Field>
+                      </dl>
+                      {event.metadata.screenshotImageBase64 ? (
+                        <div className="space-y-1">
+                          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Screenshot
+                          </dt>
+                          <dd>
+                            <img
+                              src={`data:image/jpeg;base64,${event.metadata.screenshotImageBase64}`}
+                              alt="Captured screenshot"
+                              className="max-w-2xl max-h-[32rem] rounded-md border object-contain"
+                            />
+                          </dd>
+                        </div>
+                      ) : null}
+                      <div className="space-y-1">
+                        <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                          OCR Text
+                        </dt>
+                        <dd>
+                          {event.metadata.ocrText ? (
+                            <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted p-4 font-mono text-xs">
+                              {event.metadata.ocrText}
+                            </pre>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No text detected in this screenshot.
+                            </p>
+                          )}
+                        </dd>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <dl className="grid gap-6 sm:grid-cols-2">
+                        <Field label="Active window title">
+                          {event.metadata.activeWindowTitle ?? "—"}
+                        </Field>
+                        <Field label="Keystroke count">
+                          {event.metadata.keystrokeCount ?? "—"}
+                        </Field>
+                      </dl>
+                      <div className="space-y-1">
+                        <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Captured text
+                        </dt>
+                        <dd>
+                          <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted p-4 font-mono text-xs">
+                            {event.metadata.capturedText ?? "—"}
+                          </pre>
+                        </dd>
+                      </div>
+                    </>
+                  )}
                   <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <ShieldAlert className="size-3.5" />
                     Viewing this evidence is logged for audit purposes.

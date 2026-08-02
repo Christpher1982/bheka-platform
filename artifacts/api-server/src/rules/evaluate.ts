@@ -121,14 +121,18 @@ export interface RuleMatch {
 type Rule = (input: RuleInput) => RuleMatch | null;
 
 // ── Rule (a): sensitive_keyword ─────────────────────────────────────────────
-// Reads captured content, so it is Tier 3.
+// Reads captured content, so it is Tier 3. Checks both keystroke-captured
+// text (metadata.capturedText, from keystroke_batch events) and local-OCR
+// text pulled off a screenshot (metadata.ocrText, from screenshot_capture
+// events) — whichever field is present and non-empty on the given event.
+// A single event only ever populates one of the two in practice, but this
+// rule makes no assumption about eventType so it stays generic.
 
 const KEYWORD_CONTEXT_CHARS = 40;
 
-const sensitiveKeyword: Rule = ({ metadata }) => {
-  const text = metadata.capturedText;
-  if (typeof text !== "string" || text.length === 0) return null;
-
+function findKeywordMatch(
+  text: string,
+): { keyword: string; context: string } | null {
   const haystack = text.toLowerCase();
   const keyword = ruleConfig.sensitiveKeywords.find((k) =>
     haystack.includes(k),
@@ -140,13 +144,29 @@ const sensitiveKeyword: Rule = ({ metadata }) => {
   const to = Math.min(text.length, at + keyword.length + KEYWORD_CONTEXT_CHARS);
   const context =
     (from > 0 ? "…" : "") + text.slice(from, to) + (to < text.length ? "…" : "");
+  return { keyword, context };
+}
 
-  return {
-    ruleName: "sensitive_keyword",
-    severity: "high",
-    summary: `Captured text contains the sensitive keyword "${keyword}": ${context}`,
-    tier: 3,
-  };
+const sensitiveKeyword: Rule = ({ metadata }) => {
+  const candidates: Array<{ field: string; text: string }> = [];
+  if (typeof metadata.capturedText === "string" && metadata.capturedText.length > 0) {
+    candidates.push({ field: "Captured text", text: metadata.capturedText });
+  }
+  if (typeof metadata.ocrText === "string" && metadata.ocrText.length > 0) {
+    candidates.push({ field: "Screenshot OCR text", text: metadata.ocrText });
+  }
+
+  for (const { field, text } of candidates) {
+    const match = findKeywordMatch(text);
+    if (!match) continue;
+    return {
+      ruleName: "sensitive_keyword",
+      severity: "high",
+      summary: `${field} contains the sensitive keyword "${match.keyword}": ${match.context}`,
+      tier: 3,
+    };
+  }
+  return null;
 };
 
 // ── Rule (b): off_hours_activity ────────────────────────────────────────────

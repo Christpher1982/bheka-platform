@@ -67,7 +67,13 @@ export function ActivityPage() {
                         <TableCell className="max-w-md text-muted-foreground">
                           {event.activeWindowTitle ?? "—"}
                         </TableCell>
-                        <TableCell>{event.keystrokeCount ?? "—"}</TableCell>
+                        <TableCell>
+                          {event.eventType === "screenshot_capture" ? (
+                            <Badge variant="secondary">Screenshot</Badge>
+                          ) : (
+                            (event.keystrokeCount ?? "—")
+                          )}
+                        </TableCell>
                         <TableCell>
                           {event.hasDetection ? (
                             <Badge variant="destructive">Detection</Badge>
