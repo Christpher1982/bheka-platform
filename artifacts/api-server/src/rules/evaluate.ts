@@ -19,9 +19,16 @@
 // Deliberately NOT handled in v0, in rough priority order for whoever picks
 // this up next:
 //   - multiple simultaneous matches (only the highest-severity match is kept)
-//   - rate limiting / dedupe, so a noisy endpoint cannot flood detections
 //   - per-tenant rule configuration (env vars are process-global today)
 //   - allowlisting (e.g. the security team's own machines matching keywords)
+//
+// Rate limiting / dedupe is now partially handled: agent-events.ts applies a
+// per-(tenant, ruleName, subject) cooldown window (ruleConfig.dedupeCooldownMinutes
+// below) before inserting a new detection, so a noisy endpoint firing the same
+// rule on the same subject repeatedly does not flood the detections table. This
+// is still a simple, single-window cooldown — it does not do any smarter
+// aggregation (e.g. merging cooldown-suppressed events into the original
+// detection's evidence), and it is scoped to v0 rules only.
 
 import type { ActivityEventMetadata } from "@workspace/db";
 
@@ -45,6 +52,7 @@ const DEFAULT_OFF_HOURS_START = 7; // 07:00
 const DEFAULT_OFF_HOURS_END = 19; // 19:00
 const DEFAULT_OFF_HOURS_TIMEZONE = "Africa/Johannesburg";
 const DEFAULT_KEYSTROKE_THRESHOLD = 500;
+const DEFAULT_DEDUPE_COOLDOWN_MINUTES = 30;
 
 function envList(name: string, fallback: string[]): string[] {
   const raw = process.env[name];
@@ -79,6 +87,15 @@ export const ruleConfig = {
   keystrokeThreshold: envInt(
     "RULE_KEYSTROKE_THRESHOLD",
     DEFAULT_KEYSTROKE_THRESHOLD,
+  ),
+  // Minutes a rule stays "cooled down" for a given subject after it last
+  // raised a detection. Applies generically to every rule: if the same
+  // ruleName already produced a detection for the same subject within this
+  // many minutes of the current event, agent-events.ts skips raising a new
+  // one so a noisy endpoint cannot flood the detections table.
+  dedupeCooldownMinutes: envInt(
+    "RULE_DEDUPE_COOLDOWN_MINUTES",
+    DEFAULT_DEDUPE_COOLDOWN_MINUTES,
   ),
 } as const;
 

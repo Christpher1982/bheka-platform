@@ -15,10 +15,22 @@
 // because the shared ingest token is not tenant-scoped. Every referenced entity
 // is therefore re-checked against the resolved tenant below — without that, a
 // token holder could stitch one tenant's site onto another tenant's user.
+//
+// Dedupe/cooldown: a noisy agent can call this endpoint very frequently (e.g.
+// once a minute) while a single ongoing situation (like being off-hours)
+// keeps matching the same rule. Before inserting a new detection for a match,
+// we look up the most recent existing detection for the same tenant + ruleName
+// + subject (subjectUserId, since that is required on both activity_events and
+// detections today; sourceAgentId would be the fallback if a rule ever needed
+// to key off an agent instead, but no activity event lacks a subjectUserId in
+// the current schema). If that detection's occurredAt is within
+// ruleConfig.dedupeCooldownMinutes of the current event's occurredAt, we skip
+// creating a new detection — the activity event itself is still stored either
+// way. This is generic across all rules, not specific to off_hours_activity.
 
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import {
   db,
   activityEventsTable,
@@ -31,7 +43,7 @@ import {
 import { withTenantContext } from "../../lib/tenant-context.js";
 import { sendProblem, Problems } from "../../lib/problem.js";
 import { requireAgentToken } from "../../middleware/require-agent-token.js";
-import { evaluateEvent } from "../../rules/evaluate.js";
+import { evaluateEvent, ruleConfig } from "../../rules/evaluate.js";
 
 const router: IRouter = Router();
 
@@ -147,6 +159,39 @@ router.post(
 
       const match = evaluateEvent({ eventType, occurredAt, metadata });
       if (!match) return { eventId: event!.id, detectionId: null };
+
+      // Dedupe subject: prefer subjectUserId, falling back to sourceAgentId if
+      // it were ever null (see comment at the top of this file).
+      const dedupeSubjectUserId = subjectUserId ?? null;
+
+      // Cooldown lower bound: detections at or after this instant count as
+      // "recent" for dedupe purposes.
+      const cooldownWindowStart = new Date(
+        occurredAt.getTime() - ruleConfig.dedupeCooldownMinutes * 60_000,
+      );
+
+      const [recentDetection] = await tx
+        .select({ id: detectionsTable.id, occurredAt: detectionsTable.occurredAt })
+        .from(detectionsTable)
+        .where(
+          and(
+            eq(detectionsTable.tenantId, tenantId),
+            eq(detectionsTable.ruleName, match.ruleName),
+            dedupeSubjectUserId
+              ? eq(detectionsTable.subjectUserId, dedupeSubjectUserId)
+              : eq(detectionsTable.subjectUserId, sourceAgentId),
+            gte(detectionsTable.occurredAt, cooldownWindowStart),
+          ),
+        )
+        .orderBy(desc(detectionsTable.occurredAt))
+        .limit(1);
+
+      if (recentDetection) {
+        // Still within the cooldown window for this rule + subject: the
+        // activity event is stored above, but we do not raise a second
+        // detection for what is really the same ongoing situation.
+        return { eventId: event!.id, detectionId: null };
+      }
 
       const [detection] = await tx
         .insert(detectionsTable)
