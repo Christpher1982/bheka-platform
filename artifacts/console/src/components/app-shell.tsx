@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
+  Activity,
   Briefcase,
   Building2,
   LogOut,
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { href: "/cases", label: "Cases", icon: Briefcase },
   { href: "/detections", label: "Detections", icon: Siren },
+  { href: "/activity", label: "Activity", icon: Activity },
   { href: "/sites", label: "Sites", icon: Building2 },
   { href: "/users", label: "Users & Roles", icon: Users },
   { href: "/approvals", label: "Approvals", icon: ShieldCheck },

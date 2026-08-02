@@ -96,6 +96,32 @@ export type DetectionEvidenceDto = Pick<
   >;
 };
 
+// GET /v1/activity-events list item. capturedText is intentionally omitted —
+// same reasoning as DetectionDto keeping `summary` short instead of the full
+// evidence blob.
+export type ActivityEventDto = Pick<
+  Jsonified<ActivityEvent>,
+  "id" | "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  keystrokeCount: number | null;
+  activeWindowTitle: string | null;
+  hasDetection: boolean;
+};
+
+// GET /v1/activity-events/:eventId full detail, including capturedText.
+// Viewing this is logged server-side (action "activity_event.viewed").
+export type ActivityEventDetailDto = Pick<
+  Jsonified<ActivityEvent>,
+  "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  eventId: ActivityEvent["id"];
+  metadata: ActivityEventMetadata;
+  detection?: Pick<
+    Jsonified<Detection>,
+    "id" | "ruleName" | "severity" | "summary" | "status"
+  >;
+};
+
 export type SiteDto = Pick<
   Jsonified<Site>,
   | "id"

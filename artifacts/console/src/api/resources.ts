@@ -3,6 +3,8 @@
 
 import { apiFetch, newIdempotencyKey } from "./client";
 import type {
+  ActivityEventDetailDto,
+  ActivityEventDto,
   ApprovalDto,
   CaseDetailDto,
   CaseDto,
@@ -87,6 +89,22 @@ export function getDetectionEvidence(
   detectionId: string,
 ): Promise<DetectionEvidenceDto> {
   return apiFetch(`/v1/detections/${detectionId}/evidence`);
+}
+
+// ── activity events ────────────────────────────────────────────────────────
+
+export function listActivityEvents(
+  query: PageQuery & { subjectUserId?: string; siteId?: string },
+): Promise<Paginated<ActivityEventDto>> {
+  return apiFetch("/v1/activity-events", { params: { ...query } });
+}
+
+// Full raw event, including capturedText. Fetching this is logged to
+// audit_log server-side (action "activity_event.viewed").
+export function getActivityEvent(
+  eventId: string,
+): Promise<ActivityEventDetailDto> {
+  return apiFetch(`/v1/activity-events/${eventId}`);
 }
 
 // ── sites ───────────────────────────────────────────────────────────────────
