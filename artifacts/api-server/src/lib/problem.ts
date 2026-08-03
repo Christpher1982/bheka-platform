@@ -109,6 +109,15 @@ export const Problems = {
     };
   },
 
+  payloadTooLarge(detail?: string): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/payload-too-large`,
+      title: "Request payload too large",
+      status: 413,
+      detail,
+    };
+  },
+
   invalidEnrolmentToken(): ProblemDetail {
     return {
       type: `${PROBLEM_BASE}/invalid-enrolment-token`,
