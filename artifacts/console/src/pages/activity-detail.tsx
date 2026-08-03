@@ -7,7 +7,12 @@ import { PageHeader } from "@/components/app-shell";
 import { QueryState } from "@/components/states";
 import { SeverityBadge, StatusBadge } from "@/components/status-badge";
 import { getActivityEvent } from "@/api/resources";
-import { formatDateTime, formatRuleName, shortId } from "@/lib/format";
+import {
+  formatDateTime,
+  formatDurationSeconds,
+  formatRuleName,
+  shortId,
+} from "@/lib/format";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -97,7 +102,30 @@ export function ActivityDetailPage() {
                   <CardTitle className="text-base">Captured data</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {event.eventType === "screenshot_capture" ? (
+                  {event.eventType === "app_usage_session" ? (
+                    <>
+                      <dl className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <Field label="Process name">
+                          {event.metadata.processName ?? "—"}
+                        </Field>
+                        <Field label="Window title">
+                          {event.metadata.windowTitle ?? "—"}
+                        </Field>
+                        <Field label="Type">
+                          {event.metadata.isBrowser ? "Browser" : "App"}
+                        </Field>
+                        <Field label="Started at">
+                          {formatDateTime(event.metadata.startedAt)}
+                        </Field>
+                        <Field label="Ended at">
+                          {formatDateTime(event.metadata.endedAt)}
+                        </Field>
+                        <Field label="Duration">
+                          {formatDurationSeconds(event.metadata.durationSeconds)}
+                        </Field>
+                      </dl>
+                    </>
+                  ) : event.eventType === "screenshot_capture" ? (
                     <>
                       <dl className="grid gap-6 sm:grid-cols-2">
                         <Field label="Active window title">

@@ -68,6 +68,45 @@ WHAT IT DOES
   text, off-hours activity, high keystroke volume) and may create a
   Detection, visible on the Bheka console's Detections page.
 
+- Runs a THIRD, independent loop on its own thread that tracks active
+  application / website usage — separate from the keystroke agent, with much
+  lower overhead, and intended to run always-on. Every
+  `APP_USAGE_POLL_SECONDS` (default 5) it polls the current foreground
+  window's title and owning process name. It keeps an in-memory "current
+  session" for as long as the (processName, windowTitle) pair stays the
+  same; the instant that pair changes (user switches window/app), the
+  previous session is closed out (duration = now - session start) and a new
+  session begins. Sessions shorter than `APP_USAGE_MIN_SESSION_SECONDS`
+  (default 2) are discarded as noise (e.g. a quick alt-tab). Each closed
+  session is POSTed immediately as its own ingest event:
+
+    POST {BHEKA_API_URL}/api/v1/agent/events
+    Header: X-Agent-Token: {AGENT_TOKEN}
+    Body: {
+      "tenantSlug": "...",
+      "siteId": "...",
+      "subjectUserId": "...",
+      "sourceAgentId": "...",
+      "eventType": "app_usage_session",
+      "occurredAt": "2026-08-01T20:32:00Z",
+      "metadata": {
+        "processName": "chrome.exe",
+        "windowTitle": "Bheka Console - Activity",
+        "isBrowser": true,
+        "startedAt": "2026-08-01T20:31:18Z",
+        "endedAt": "2026-08-01T20:32:00Z",
+        "durationSeconds": 42
+      }
+    }
+
+  This is a best-effort "website usage" signal via window title (which often
+  contains the page title, and sometimes the site name, for browsers) — it
+  does NOT extract real URLs. True per-URL tracking would require a browser
+  extension and is explicitly out of scope here. No rule currently matches
+  this event type; it exists purely as a visibility/context feature in the
+  raw Activity feed, same as a plain keystroke batch with no sensitive
+  content.
+
 REQUIRED ENVIRONMENT VARIABLES
 -------------------------------
   BHEKA_API_URL     e.g. http://192.168.1.50:8080
@@ -88,6 +127,10 @@ OPTIONAL ENVIRONMENT VARIABLES
                                 a random UUID is generated once at startup.
   SCREENSHOT_INTERVAL_SECONDS  How often the screenshot+OCR loop captures and
                                 sends a screenshot. Defaults to 60.
+  APP_USAGE_POLL_SECONDS       How often the app/website usage loop polls the
+                                foreground window. Defaults to 5.
+  APP_USAGE_MIN_SESSION_SECONDS  Sessions shorter than this are discarded as
+                                noise (e.g. a quick alt-tab). Defaults to 2.
 
 SETUP
 -----
@@ -140,13 +183,18 @@ On each send:
   [12:05:00] Sent screenshot (window: 'Gmail - Compose') -> HTTP 201. OCR
   chars: 412. Detection created: False.
 
+  [12:05:42] Sent app usage session (process: 'chrome.exe', window: 'Gmail -
+  Compose', duration: 42s) -> HTTP 201.
+
 On error:
   [12:04:41] ERROR sending batch: ConnectionError(...). If BHEKA_API_URL
   points to localhost but you're running this on a different PC than the
   API server, use the API server machine's LAN IP address instead.
 
 Stop with Ctrl+C — any remaining buffered text is flushed, the screenshot
-loop is stopped, and both are sent/joined before exit.
+loop is stopped, the app-usage loop flushes whatever session is currently
+open (if it meets the minimum duration), and all three are sent/joined
+before exit.
 """
 
 import base64
@@ -174,6 +222,24 @@ try:
     import pygetwindow as gw
 except ImportError:
     gw = None  # Optional — we degrade gracefully without it.
+
+# App/website usage loop: resolving the *process name* that owns the
+# foreground window needs more than pygetwindow alone exposes, so on Windows
+# we pair `psutil` (PID -> process name) with a small ctypes call into
+# user32/kernel32 (foreground window handle -> owning PID). Both are optional
+# at import time — a missing dependency disables just this third loop instead
+# of crashing the whole agent.
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+try:
+    import ctypes
+    from ctypes import wintypes
+except ImportError:  # pragma: no cover - ctypes is stdlib; defensive only.
+    ctypes = None
+    wintypes = None
 
 # Screenshot capture + local OCR. Both are optional at import time so a
 # missing dependency degrades the screenshot loop instead of crashing the
@@ -212,6 +278,27 @@ SCREENSHOT_INTERVAL_SECONDS = int(os.environ.get("SCREENSHOT_INTERVAL_SECONDS", 
 SCREENSHOT_MAX_WIDTH = 1280
 SCREENSHOT_JPEG_QUALITY = 55
 
+# App/website usage loop. Polling is cheap (a couple of Win32/psutil calls),
+# so a short default interval is fine — much lower overhead than the
+# keystroke or screenshot loops, which is the point of this third loop.
+APP_USAGE_POLL_SECONDS = int(os.environ.get("APP_USAGE_POLL_SECONDS", "5"))
+APP_USAGE_MIN_SESSION_SECONDS = int(
+    os.environ.get("APP_USAGE_MIN_SESSION_SECONDS", "2")
+)
+
+# Best-effort "is this a browser" signal, by owning process name. This is NOT
+# real per-URL website tracking (that needs a browser extension, out of scope
+# here) — it just flags sessions where the window title is likely to be a
+# page title so the console can label them distinctly.
+BROWSER_PROCESS_NAMES = {
+    "chrome.exe",
+    "msedge.exe",
+    "firefox.exe",
+    "brave.exe",
+    "opera.exe",
+    "iexplore.exe",
+}
+
 INGEST_PATH = "/api/v1/agent/events"
 
 
@@ -244,6 +331,12 @@ _stop_event = threading.Event()
 # only touched from the single screenshot thread, but the "warned once" flag
 # is a simple module-level bool guarded implicitly by that same thread.
 _tesseract_warned = False
+
+# App/website usage loop state. Only ever touched from the single app-usage
+# thread (plus a final flush from the main thread during shutdown, after that
+# thread has already been signalled to stop), so no separate lock is needed.
+_app_usage_session = None  # dict with processName/windowTitle/startedAt, or None
+_app_usage_warned = False
 
 
 SPECIAL_KEY_TOKENS = {
@@ -524,6 +617,172 @@ def _screenshot_timer_loop():
             print(f"[{ts}] ERROR in screenshot loop: {exc}")
 
 
+# ---------------------------------------------------------------------------
+# Active application / website usage tracking (runs on its own thread; must
+# never block or be blocked by the keystroke or screenshot loops above).
+#
+# This is intentionally the lowest-overhead of the three loops: it does not
+# capture any content (no keystrokes, no screenshots, no OCR) — just the
+# foreground window's title and owning process name on a short timer — which
+# is what makes it suitable to run always-on.
+# ---------------------------------------------------------------------------
+
+
+def _get_foreground_pid():
+    """Return the PID owning the current foreground window on Windows, or
+    None if unavailable (e.g. not running on Windows, or no foreground
+    window). Uses ctypes to call user32.GetForegroundWindow +
+    user32.GetWindowThreadProcessId directly, since pygetwindow does not
+    expose the owning process."""
+    if ctypes is None or wintypes is None:
+        return None
+    try:
+        user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    except AttributeError:
+        # Not running on Windows (ctypes.windll only exists there).
+        return None
+    try:
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return None
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        return pid.value or None
+    except Exception:
+        return None
+
+
+def _get_foreground_process_name():
+    """Return the owning process's executable name (e.g. 'chrome.exe'), or
+    'unknown' if it cannot be determined (missing psutil, non-Windows
+    sandbox, permission error, or the process has already exited)."""
+    global _app_usage_warned
+    if psutil is None:
+        if not _app_usage_warned:
+            print(
+                "WARNING: psutil is not installed — app usage sessions will "
+                "report processName as 'unknown'. Run: pip install -r "
+                "requirements.txt"
+            )
+            _app_usage_warned = True
+        return "unknown"
+    pid = _get_foreground_pid()
+    if not pid:
+        return "unknown"
+    try:
+        return psutil.Process(pid).name() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def _send_app_usage_session(process_name, window_title, is_browser, started_at, ended_at):
+    duration_seconds = max(0, round((ended_at - started_at).total_seconds()))
+    url = f"{BHEKA_API_URL}{INGEST_PATH}"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Agent-Token": AGENT_TOKEN,
+    }
+    body = {
+        "tenantSlug": TENANT_SLUG,
+        "siteId": SITE_ID,
+        "subjectUserId": SUBJECT_USER_ID,
+        "sourceAgentId": SOURCE_AGENT_ID,
+        "eventType": "app_usage_session",
+        "occurredAt": _now_iso_utc(),
+        "metadata": {
+            "processName": process_name,
+            "windowTitle": window_title,
+            "isBrowser": is_browser,
+            "startedAt": started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "endedAt": ended_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "durationSeconds": duration_seconds,
+        },
+    }
+    ts = time.strftime("%H:%M:%S")
+    try:
+        resp = requests.post(url, json=body, headers=headers, timeout=10)
+        print(
+            f"[{ts}] Sent app usage session (process: '{process_name}', "
+            f"window: '{window_title}', duration: {duration_seconds}s) "
+            f"-> HTTP {resp.status_code}."
+        )
+    except requests.exceptions.RequestException as exc:
+        print(f"[{ts}] ERROR sending app usage session: {exc}")
+        print(
+            "If BHEKA_API_URL points to localhost but you're running this on a "
+            "different PC than the API server, use the API server machine's "
+            "LAN IP address instead."
+        )
+
+
+def _close_app_usage_session(session, ended_at):
+    """Close out a session dict and send it, unless it is shorter than
+    APP_USAGE_MIN_SESSION_SECONDS (treated as noise, e.g. a quick alt-tab)."""
+    duration_seconds = (ended_at - session["startedAt"]).total_seconds()
+    if duration_seconds < APP_USAGE_MIN_SESSION_SECONDS:
+        return
+    _send_app_usage_session(
+        session["processName"],
+        session["windowTitle"],
+        session["isBrowser"],
+        session["startedAt"],
+        ended_at,
+    )
+
+
+def _poll_app_usage_once():
+    """Poll the current foreground (process, window) pair once and update the
+    in-memory session: closes/sends the previous session when the pair has
+    changed, and (re)starts a session for the current pair."""
+    global _app_usage_session
+    process_name = _get_foreground_process_name()
+    window_title = _get_active_window_title()
+    now = dt.datetime.now(dt.timezone.utc)
+
+    current = _app_usage_session
+    if (
+        current is not None
+        and current["processName"] == process_name
+        and current["windowTitle"] == window_title
+    ):
+        # Same (process, window) pair as last poll — session continues.
+        return
+
+    if current is not None:
+        _close_app_usage_session(current, now)
+
+    _app_usage_session = {
+        "processName": process_name,
+        "windowTitle": window_title,
+        "isBrowser": process_name.lower() in BROWSER_PROCESS_NAMES,
+        "startedAt": now,
+    }
+
+
+def _app_usage_timer_loop():
+    while not _stop_event.is_set():
+        try:
+            _poll_app_usage_once()
+        except Exception as exc:
+            # This loop must never take the process down — the keystroke and
+            # screenshot loops have to keep running regardless of app-usage
+            # polling errors.
+            ts = time.strftime("%H:%M:%S")
+            print(f"[{ts}] ERROR in app usage loop: {exc}")
+        _stop_event.wait(APP_USAGE_POLL_SECONDS)
+
+
+def _flush_app_usage_session_on_shutdown():
+    """Send whatever session is currently open (if it meets the minimum
+    duration) so the last session isn't silently dropped on Ctrl+C."""
+    global _app_usage_session
+    session = _app_usage_session
+    _app_usage_session = None
+    if session is None:
+        return
+    _close_app_usage_session(session, dt.datetime.now(dt.timezone.utc))
+
+
 def _on_press(key):
     global _keystroke_count
     fragment = _key_to_text(key)
@@ -561,6 +820,18 @@ def main():
             "NOTE: 'mss' is not installed — falling back to PIL.ImageGrab "
             "for screenshot capture."
         )
+    print(
+        f"App/website usage loop enabled: polling the foreground window "
+        f"every ~{APP_USAGE_POLL_SECONDS}s (APP_USAGE_POLL_SECONDS), "
+        f"discarding sessions under {APP_USAGE_MIN_SESSION_SECONDS}s "
+        f"(APP_USAGE_MIN_SESSION_SECONDS)."
+    )
+    if psutil is None:
+        print(
+            "NOTE: 'psutil' is not installed — app usage sessions will "
+            "report processName as 'unknown'. Run: pip install -r "
+            "requirements.txt"
+        )
     print("Press Ctrl+C to stop.")
 
     timer_thread = threading.Thread(target=_flush_timer_loop, daemon=True)
@@ -570,6 +841,12 @@ def main():
     # large upload can never delay keystroke batch delivery.
     screenshot_thread = threading.Thread(target=_screenshot_timer_loop, daemon=True)
     screenshot_thread.start()
+
+    # App/website usage tracking also runs on its own thread — independent of
+    # (and much lower overhead than) both loops above, so it can stay
+    # always-on without adding meaningful load.
+    app_usage_thread = threading.Thread(target=_app_usage_timer_loop, daemon=True)
+    app_usage_thread.start()
 
     listener = keyboard.Listener(on_press=_on_press)
     listener.start()
@@ -585,6 +862,8 @@ def main():
         print("Stopping agent, flushing final buffer...")
         _flush()
         screenshot_thread.join(timeout=2)
+        app_usage_thread.join(timeout=2)
+        _flush_app_usage_session_on_shutdown()
         print("Stopped.")
 
 

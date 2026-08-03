@@ -98,6 +98,47 @@ describe("evaluateEvent — screenshot_capture", () => {
   });
 });
 
+describe("evaluateEvent — app_usage_session (new eventType, no rule matches it yet)", () => {
+  // app_usage_session is a visibility/context event (active application /
+  // website usage tracking) — it carries no captured text, no OCR text, and
+  // no keystroke count, so none of the v0 rules (sensitive_keyword,
+  // off_hours_activity during working hours, high_volume_keystrokes) should
+  // fire on it. This locks down the "no crash, no false match" contract the
+  // same way the screenshot regression tests above do for null/absent
+  // fields.
+  it("does not throw and does not match any rule for a well-formed app_usage_session event", () => {
+    expect(() =>
+      evaluateEvent(
+        input("app_usage_session", {
+          processName: "chrome.exe",
+          windowTitle: "Bheka Console - Activity",
+          isBrowser: true,
+          startedAt: "2026-08-03T07:59:18Z",
+          endedAt: "2026-08-03T08:00:00Z",
+          durationSeconds: 42,
+        }),
+      ),
+    ).not.toThrow();
+
+    const match = evaluateEvent(
+      input("app_usage_session", {
+        processName: "chrome.exe",
+        windowTitle: "Bheka Console - Activity",
+        isBrowser: true,
+        startedAt: "2026-08-03T07:59:18Z",
+        endedAt: "2026-08-03T08:00:00Z",
+        durationSeconds: 42,
+      }),
+    );
+    expect(match).toBeNull();
+  });
+
+  it("does not throw when app_usage_session fields are entirely absent from metadata", () => {
+    expect(() => evaluateEvent(input("app_usage_session", {}))).not.toThrow();
+    expect(evaluateEvent(input("app_usage_session", {}))).toBeNull();
+  });
+});
+
 describe("evaluateEvent — keystroke_batch (unaffected by the screenshot change)", () => {
   it("still matches sensitive_keyword via capturedText", () => {
     const match = evaluateEvent(

@@ -55,7 +55,10 @@ const MAX_SCREENSHOT_BASE64_LENGTH = 8_000_000;
 
 // Additive: keystroke_batch's capturedText/keystrokeCount fields are kept as
 // they were; screenshot_capture's fields are new and all optional so both
-// event types validate against one shared shape.
+// event types validate against one shared shape. app_usage_session's fields
+// (processName/windowTitle/isBrowser/startedAt/endedAt/durationSeconds) are
+// likewise new and additive — see rules/evaluate.ts (no rule reads these
+// yet, by design) and lib/db ActivityEventMetadata.
 const EventMetadata = z
   .object({
     keystrokeCount: z.number().int().nonnegative().optional(),
@@ -70,18 +73,82 @@ const EventMetadata = z
       .optional(),
     screenshotWidth: z.number().int().positive().optional(),
     screenshotHeight: z.number().int().positive().optional(),
+    // app_usage_session fields — active application / website usage
+    // tracking. windowTitle is the raw foreground window title only (a
+    // best-effort "website usage" signal, not real per-URL tracking).
+    // processName/isBrowser/startedAt/endedAt/durationSeconds together
+    // describe one discrete usage session, as emitted by the agent's
+    // third capture thread.
+    processName: z.string().max(260).optional(),
+    windowTitle: z.string().max(500).optional(),
+    isBrowser: z.boolean().optional(),
+    // Kept as validated ISO datetime strings (not coerced to Date) so the
+    // stored jsonb metadata matches the ActivityEventMetadata `string` type
+    // exactly — unlike the top-level `occurredAt` column, these live inside
+    // the free-form metadata blob.
+    startedAt: z.string().datetime().optional(),
+    endedAt: z.string().datetime().optional(),
+    durationSeconds: z.number().positive().optional(),
   })
   .passthrough();
 
-const IngestEventBody = z.object({
-  tenantSlug: z.string().min(1),
-  siteId: z.string().uuid(),
-  subjectUserId: z.string().uuid(),
-  sourceAgentId: z.string().uuid(),
-  eventType: z.string().min(1).max(200),
-  occurredAt: z.coerce.date(),
-  metadata: EventMetadata,
-});
+const IngestEventBody = z
+  .object({
+    tenantSlug: z.string().min(1),
+    siteId: z.string().uuid(),
+    subjectUserId: z.string().uuid(),
+    sourceAgentId: z.string().uuid(),
+    eventType: z.string().min(1).max(200),
+    occurredAt: z.coerce.date(),
+    metadata: EventMetadata,
+  })
+  // The shared EventMetadata shape above keeps every field optional so all
+  // event types validate against one object (existing convention for
+  // keystroke_batch/screenshot_capture). app_usage_session, however, does
+  // have real required fields (processName, isBrowser, startedAt, endedAt,
+  // durationSeconds) — enforced here, conditionally on eventType, so a
+  // malformed app_usage_session event still gets a clean 400 instead of
+  // silently persisting with missing data. keystroke_batch and
+  // screenshot_capture are untouched by this refinement.
+  .superRefine((body, ctx) => {
+    if (body.eventType !== "app_usage_session") return;
+    const { metadata } = body;
+    if (typeof metadata.processName !== "string" || metadata.processName.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["metadata", "processName"],
+        message: "processName is required for app_usage_session events.",
+      });
+    }
+    if (typeof metadata.isBrowser !== "boolean") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["metadata", "isBrowser"],
+        message: "isBrowser is required for app_usage_session events.",
+      });
+    }
+    if (typeof metadata.startedAt !== "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["metadata", "startedAt"],
+        message: "startedAt is required for app_usage_session events.",
+      });
+    }
+    if (typeof metadata.endedAt !== "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["metadata", "endedAt"],
+        message: "endedAt is required for app_usage_session events.",
+      });
+    }
+    if (typeof metadata.durationSeconds !== "number") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["metadata", "durationSeconds"],
+        message: "durationSeconds is required for app_usage_session events.",
+      });
+    }
+  });
 
 router.post(
   "/v1/agent/events",

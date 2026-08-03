@@ -98,7 +98,18 @@ router.get(
         subjectUserId: e.subjectUserId,
         sourceAgentId: e.sourceAgentId,
         keystrokeCount: e.metadata?.keystrokeCount ?? null,
-        activeWindowTitle: e.metadata?.activeWindowTitle ?? null,
+        // app_usage_session events carry the foreground window title under
+        // metadata.windowTitle rather than metadata.activeWindowTitle (see
+        // lib/db ActivityEventMetadata) — fall back to it here so the list's
+        // single "Window Title" column works for every event type.
+        activeWindowTitle:
+          e.metadata?.activeWindowTitle ?? e.metadata?.windowTitle ?? null,
+        // app_usage_session list fields — kept alongside keystrokeCount /
+        // activeWindowTitle rather than replacing them, same additive
+        // pattern as screenshot_capture's fields above.
+        durationSeconds: e.metadata?.durationSeconds ?? null,
+        isBrowser: e.metadata?.isBrowser ?? null,
+        processName: e.metadata?.processName ?? null,
         hasDetection: linkedEventIds.has(e.id),
       })),
       pageInfo: { nextCursor, hasMore },

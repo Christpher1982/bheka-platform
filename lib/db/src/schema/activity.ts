@@ -33,6 +33,19 @@ export interface ActivityEventMetadata {
   screenshotImageBase64?: string;
   screenshotWidth?: number;
   screenshotHeight?: number;
+  // app_usage_session fields (see routes/v1/agent-events.ts). Active
+  // application / website usage tracking: a discrete usage session for one
+  // (processName, windowTitle) pair, closed out when the foreground window
+  // changes. windowTitle is the raw foreground window title only — this is
+  // a best-effort "website usage" signal (browsers often put the page title
+  // there), NOT real per-URL tracking, which is out of scope. isBrowser is
+  // a best-effort flag based on a known-browser process name list.
+  processName?: string;
+  windowTitle?: string;
+  isBrowser?: boolean;
+  startedAt?: string;
+  endedAt?: string;
+  durationSeconds?: number;
   [key: string]: unknown;
 }
 

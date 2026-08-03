@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/app-shell";
 import { PaginationControls, useCursorPager } from "@/components/pagination";
 import { QueryState } from "@/components/states";
 import { listActivityEvents } from "@/api/resources";
-import { formatDateTime, shortId } from "@/lib/format";
+import { formatDateTime, formatDurationSeconds, shortId } from "@/lib/format";
 
 export function ActivityPage() {
   const pager = useCursorPager();
@@ -49,7 +49,7 @@ export function ActivityPage() {
                       <TableHead>Occurred</TableHead>
                       <TableHead>Subject</TableHead>
                       <TableHead>Window Title</TableHead>
-                      <TableHead>Keystrokes</TableHead>
+                      <TableHead>Keystrokes / Duration</TableHead>
                       <TableHead>Detection</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -70,6 +70,15 @@ export function ActivityPage() {
                         <TableCell>
                           {event.eventType === "screenshot_capture" ? (
                             <Badge variant="secondary">Screenshot</Badge>
+                          ) : event.eventType === "app_usage_session" ? (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">
+                                {event.isBrowser ? "Browser" : "App"}
+                              </Badge>
+                              <span className="text-muted-foreground">
+                                {formatDurationSeconds(event.durationSeconds)}
+                              </span>
+                            </div>
                           ) : (
                             (event.keystrokeCount ?? "—")
                           )}

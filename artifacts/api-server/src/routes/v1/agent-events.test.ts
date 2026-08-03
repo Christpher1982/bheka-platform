@@ -224,5 +224,65 @@ skipIfNoAgentToken(
 
       expect(res.status).toBe(400);
     });
+
+    // app_usage_session: active application / website usage tracking, added
+    // alongside the keystroke_batch and screenshot_capture loops (see
+    // agent/bheka_keystroke_agent.py's third capture thread). This event
+    // type never feeds a detection rule (see rules/evaluate.test.ts) — it is
+    // pure visibility/context, so we only assert it stores cleanly and
+    // never creates a detection here.
+    it("returns 201 for a well-formed app_usage_session event, stores it, and creates no detection", async () => {
+      const res = await request(app)
+        .post("/api/v1/agent/events")
+        .set("X-Agent-Token", AGENT_TOKEN)
+        .send(
+          ingestPayload({
+            eventType: "app_usage_session",
+            metadata: {
+              processName: "chrome.exe",
+              windowTitle: "Bheka Console - Activity",
+              isBrowser: true,
+              startedAt: "2026-08-03T07:59:18Z",
+              endedAt: "2026-08-03T08:00:00Z",
+              durationSeconds: 42,
+            },
+          }),
+        );
+
+      expect(res.status).toBe(201);
+      expect(res.body.detectionCreated).toBe(false);
+      expect(res.body.eventId).toBeTruthy();
+
+      const storedResult = await db.execute(
+        sql`SELECT metadata FROM activity_events WHERE id = ${res.body.eventId}`,
+      );
+      const stored = storedResult.rows[0] as { metadata: Record<string, unknown> };
+      const metadata = stored.metadata;
+      expect(metadata.processName).toBe("chrome.exe");
+      expect(metadata.windowTitle).toBe("Bheka Console - Activity");
+      expect(metadata.isBrowser).toBe(true);
+      expect(metadata.durationSeconds).toBe(42);
+    });
+
+    it("returns a clean 400 (not a 500) when app_usage_session is missing the required processName field", async () => {
+      const res = await request(app)
+        .post("/api/v1/agent/events")
+        .set("X-Agent-Token", AGENT_TOKEN)
+        .send(
+          ingestPayload({
+            eventType: "app_usage_session",
+            metadata: {
+              windowTitle: "Bheka Console - Activity",
+              isBrowser: true,
+              startedAt: "2026-08-03T07:59:18Z",
+              endedAt: "2026-08-03T08:00:00Z",
+              durationSeconds: 42,
+            },
+          }),
+        );
+
+      expect(res.status).toBe(400);
+      expect(res.headers["content-type"]).toContain("application/problem+json");
+    });
   },
 );

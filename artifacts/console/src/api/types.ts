@@ -105,6 +105,11 @@ export type ActivityEventDto = Pick<
 > & {
   keystrokeCount: number | null;
   activeWindowTitle: string | null;
+  // app_usage_session list fields — present (non-null) only when
+  // eventType === "app_usage_session".
+  durationSeconds: number | null;
+  isBrowser: boolean | null;
+  processName: string | null;
   hasDetection: boolean;
 };
 
