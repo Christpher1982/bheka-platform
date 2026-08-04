@@ -191,6 +191,11 @@ $wrapperContent = @"
 # can be inspected even though the Scheduled Task itself runs headless
 # (no visible console window).
 `$ErrorActionPreference = "Continue"
+# Force Python's stdout/stderr to UTF-8 so that window titles or captured
+# keystrokes containing characters outside the legacy ANSI codepage (e.g.
+# U+200B zero-width space, smart quotes, emoji) do not crash print() when
+# stdout is redirected to a file (which is exactly what *>> below does).
+`$env:PYTHONIOENCODING = "UTF-8"
 Set-Location -Path "$InstallDir"
 & "$PythonPath" "$AgentScript" *>> "$LogFile"
 "@

