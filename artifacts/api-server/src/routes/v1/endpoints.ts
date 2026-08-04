@@ -4,6 +4,8 @@
 //   GET  /v1/endpoints                                  — fleet view (oidcBearer)
 //   GET  /v1/endpoints/:endpointId                      — single endpoint (oidcBearer)
 //   POST /v1/agents/enrol                               — enrolmentToken, audited
+//   POST /v1/agents/mobile-enrol                        — enrolmentToken, audited, no CSR/mTLS
+//   POST /v1/agents/mobile-enrol-token                  — requireSession, mints enrolmentToken
 //   POST /v1/agents/:agentId/heartbeat                  — agentMutualTLS, NOT audited
 //   GET  /v1/agents/:agentId                            — single agent (oidcBearer)
 //   GET  /v1/agent-versions                             — system-wide list (oidcBearer)
@@ -14,15 +16,17 @@
 
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
+import { randomBytes, createHash } from "node:crypto";
 import { publishEvent } from "@workspace/nats-client";
-import { createHash } from "node:crypto";
 import {
   db,
   endpointsTable,
   agentsTable,
   agentVersionsTable,
+  sitesTable,
+  tenantsTable,
 } from "@workspace/db";
 import { withTenantContext } from "../../lib/tenant-context.js";
 import { writeAuditLog } from "../../lib/audit-writer.js";
@@ -154,6 +158,8 @@ const EnrolBody = z.object({
   name: z.string().min(1).max(200),
   siteId: z.string().uuid(),
   // platform must match the agent binary that presented the CSR.
+  // android/ios are not accepted here — mobile agents use the lighter-weight
+  // POST /v1/agents/mobile-enrol flow instead (no CSR/mTLS support on device).
   platform: z.enum(["windows", "linux", "macos"]),
   agentVersionId: z.string().uuid(),
 });
@@ -309,6 +315,313 @@ router.post(
       endpointId: endpoint.id,
       certificatePem: certPem,
       tenantPublicKeyX25519B64: tenantPublicKeyB64,
+    });
+  },
+);
+
+// ── POST /v1/agents/mobile-enrol ─────────────────────────────────────────────
+// Auth: single-use enrolment token validated from Redis (same mechanism as
+// /v1/agents/enrol) — no middleware, since the token in the body IS the auth.
+//
+// Lightweight enrolment for android/ios PoC-stage agents: no CSR, no Vault
+// mTLS cert issuance, no endpoints row (mobile devices are not corporate-owned
+// endpoints — CANON section 5 refusal 4 permanently forbids BYOD endpoints).
+// The mobile app instead authenticates ingest calls with the same shared
+// X-Agent-Token used by POST /api/v1/agent/events.
+//
+// Idempotent: re-installing the app resubmits the same device-generated
+// deviceId, so a second call with the same (tenantId, deviceId) returns the
+// existing agentId rather than creating a duplicate row.
+const MobileEnrolBody = z.object({
+  tenantId: z.string().uuid(),
+  enrolmentToken: z.string().min(1),
+  deviceId: z.string().min(1).max(200),
+  name: z.string().min(1).max(200),
+  siteId: z.string().uuid(),
+  platform: z.enum(["android", "ios"]),
+  appVersion: z.string().max(50),
+});
+
+// Fallback agent_versions row used when no real release exists yet for a
+// mobile platform. Keeps mobile-enrol usable before a proper mobile build
+// pipeline publishes real agent_versions rows.
+const MOBILE_PLACEHOLDER_VERSION_STRING = "mobile-1.0.0";
+
+async function resolveMobileAgentVersionId(
+  platform: "android" | "ios",
+): Promise<string> {
+  const [existing] = await db
+    .select({ id: agentVersionsTable.id })
+    .from(agentVersionsTable)
+    .where(eq(agentVersionsTable.platform, platform))
+    .orderBy(desc(agentVersionsTable.releasedAt))
+    .limit(1);
+
+  if (existing) return existing.id;
+
+  // No agent_versions row exists yet for this platform — create a placeholder
+  // so mobile-enrol does not hard-fail before a real mobile release pipeline
+  // exists. onConflictDoNothing handles the race between concurrent enrolments.
+  const [placeholder] = await db
+    .insert(agentVersionsTable)
+    .values({
+      versionString: `${MOBILE_PLACEHOLDER_VERSION_STRING}-${platform}`,
+      platform,
+      artifactHash: "0".repeat(64),
+      minimumRing: "ring_3",
+      releasedAt: new Date(),
+    })
+    .onConflictDoNothing()
+    .returning({ id: agentVersionsTable.id });
+
+  if (placeholder) return placeholder.id;
+
+  // Lost the race — another request just inserted it; fetch it.
+  const [afterRace] = await db
+    .select({ id: agentVersionsTable.id })
+    .from(agentVersionsTable)
+    .where(
+      eq(
+        agentVersionsTable.versionString,
+        `${MOBILE_PLACEHOLDER_VERSION_STRING}-${platform}`,
+      ),
+    )
+    .limit(1);
+
+  return afterRace!.id;
+}
+
+router.post(
+  "/v1/agents/mobile-enrol",
+  async (req, res): Promise<void> => {
+    const parsed = MobileEnrolBody.safeParse(req.body);
+    if (!parsed.success) {
+      sendProblem(
+        res,
+        Problems.validationFailed(
+          parsed.error.message,
+          parsed.error.issues.map((i) => ({
+            field: i.path.join("."),
+            code: i.code,
+            message: i.message,
+          })),
+        ),
+      );
+      return;
+    }
+
+    const { tenantId, enrolmentToken, deviceId, name, siteId, platform, appVersion } =
+      parsed.data;
+
+    // Validate and atomically consume the single-use enrolment token.
+    const tokenKey = `bheka:enrol_token:${enrolmentToken}`;
+    const tokenPayload = await redis.getdel(tokenKey);
+    if (!tokenPayload) {
+      sendProblem(res, Problems.invalidEnrolmentToken());
+      return;
+    }
+
+    let tokenData: { tenantId: string };
+    try {
+      tokenData = JSON.parse(tokenPayload) as { tenantId: string };
+    } catch {
+      sendProblem(res, Problems.invalidEnrolmentToken());
+      return;
+    }
+
+    // Token must belong to the same tenant asserted in the body.
+    if (tokenData.tenantId !== tenantId) {
+      sendProblem(res, Problems.invalidEnrolmentToken());
+      return;
+    }
+
+    // siteId must belong to the resolved tenant.
+    const [tenant] = await db
+      .select({ id: tenantsTable.id, slug: tenantsTable.slug })
+      .from(tenantsTable)
+      .where(eq(tenantsTable.id, tenantId))
+      .limit(1);
+
+    if (!tenant) {
+      sendProblem(res, Problems.notFound());
+      return;
+    }
+
+    const [site] = await withTenantContext(tenantId, (tx) =>
+      tx
+        .select({ id: sitesTable.id })
+        .from(sitesTable)
+        .where(and(eq(sitesTable.id, siteId), eq(sitesTable.tenantId, tenantId)))
+        .limit(1),
+    );
+
+    if (!site) {
+      sendProblem(res, Problems.notFound());
+      return;
+    }
+
+    // Hash the consumed token for the audit record (never store the raw token).
+    const tokenHash = createHash("sha256").update(enrolmentToken).digest("hex");
+
+    const { agent, created } = await withTenantContext(tenantId, async (tx) => {
+      // Idempotent re-enrolment: same device re-installs the app and resubmits
+      // its stable deviceId — return the existing agent rather than duplicating.
+      const [existingAgent] = await tx
+        .select()
+        .from(agentsTable)
+        .where(
+          and(
+            eq(agentsTable.hostname, deviceId),
+            eq(agentsTable.tenantId, tenantId),
+          ),
+        )
+        .limit(1);
+
+      if (existingAgent) {
+        return { agent: existingAgent, created: false };
+      }
+
+      const agentVersionId = await resolveMobileAgentVersionId(platform);
+
+      const [inserted] = await tx
+        .insert(agentsTable)
+        .values({
+          tenantId,
+          siteId,
+          name,
+          hostname: deviceId,
+          agentVersionId,
+          active: true,
+          enrolmentTokenHash: tokenHash,
+        })
+        // Guards the same race the SELECT-then-INSERT above cannot fully close.
+        .onConflictDoNothing()
+        .returning();
+
+      if (inserted) {
+        return { agent: inserted, created: true };
+      }
+
+      // Lost the race to a concurrent enrolment of the same device — fetch it.
+      const [afterRace] = await tx
+        .select()
+        .from(agentsTable)
+        .where(
+          and(
+            eq(agentsTable.hostname, deviceId),
+            eq(agentsTable.tenantId, tenantId),
+          ),
+        )
+        .limit(1);
+
+      return { agent: afterRace!, created: false };
+    });
+
+    await writeAuditLog({
+      tenantId,
+      actorId: agent.id,
+      actorType: "agent",
+      action: created ? "agent.mobile_enrolled" : "agent.mobile_enrolled.idempotent_replay",
+      targetType: "agent",
+      targetId: agent.id,
+      requestId: String(req.headers["idempotency-key"] ?? uuidv7()),
+      metadata: { siteId, platform, appVersion, deviceId },
+    });
+
+    if (created) {
+      await publishEvent({
+        event_id: uuidv7(),
+        schema_version: "bheka.agent.enrolled.v1",
+        occurred_at: new Date().toISOString(),
+        producer: "bheka-gateway",
+        data: {
+          agent_id: agent.id,
+          endpoint_id: null,
+          tenant_id: tenantId,
+          site_id: siteId,
+          platform,
+          agent_version_id: agent.agentVersionId,
+          certificate_fingerprint: null,
+        },
+      });
+    }
+
+    res.status(201).json({
+      agentId: agent.id,
+      tenantSlug: tenant.slug,
+      siteId,
+      // The mobile app learns its subjectUserId out-of-band (MDM config push or
+      // QR code), not from this response — kept null here deliberately.
+      subjectUserId: null,
+    });
+  },
+);
+
+// ── POST /v1/agents/mobile-enrol-token ───────────────────────────────────────
+// Auth: requireSession (console user only). Generates a single-use enrolment
+// token an IT admin can turn into a QR code or link for a mobile device to
+// scan/open, consumed by POST /v1/agents/mobile-enrol above.
+
+const MobileEnrolTokenBody = z.object({
+  tenantId: z.string().uuid(),
+  siteId: z.string().uuid(),
+  ttlSeconds: z.number().int().positive().max(30 * 24 * 60 * 60).optional(),
+});
+
+const DEFAULT_MOBILE_ENROL_TOKEN_TTL_SECONDS = 3600;
+
+router.post(
+  "/v1/agents/mobile-enrol-token",
+  requireSession,
+  async (req, res): Promise<void> => {
+    const parsed = MobileEnrolTokenBody.safeParse(req.body);
+    if (!parsed.success) {
+      sendProblem(
+        res,
+        Problems.validationFailed(
+          parsed.error.message,
+          parsed.error.issues.map((i) => ({
+            field: i.path.join("."),
+            code: i.code,
+            message: i.message,
+          })),
+        ),
+      );
+      return;
+    }
+
+    const { tenantId, siteId, ttlSeconds } = parsed.data;
+    const sessionTenantId = req.session!.tenantId;
+
+    // Console users may only mint tokens for their own tenant.
+    if (tenantId !== sessionTenantId) {
+      sendProblem(res, Problems.forbidden("tenantId must match the caller's session tenant"));
+      return;
+    }
+
+    // siteId must belong to the resolved tenant.
+    const [site] = await withTenantContext(tenantId, (tx) =>
+      tx
+        .select({ id: sitesTable.id })
+        .from(sitesTable)
+        .where(and(eq(sitesTable.id, siteId), eq(sitesTable.tenantId, tenantId)))
+        .limit(1),
+    );
+
+    if (!site) {
+      sendProblem(res, Problems.notFound());
+      return;
+    }
+
+    const ttl = ttlSeconds ?? DEFAULT_MOBILE_ENROL_TOKEN_TTL_SECONDS;
+    const token = randomBytes(32).toString("hex");
+    const tokenKey = `bheka:enrol_token:${token}`;
+
+    await redis.setex(tokenKey, ttl, JSON.stringify({ tenantId }));
+
+    res.status(201).json({
+      token,
+      expiresInSeconds: ttl,
     });
   },
 );
