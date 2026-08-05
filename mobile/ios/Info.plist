@@ -2,34 +2,33 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Main app (BhekaAgent) Info.plist.
-	     Most build settings (bundle id, version, etc.) are generator-managed in
-	     project.pbxproj via INFOPLIST_KEY_* build settings under modern Xcode (this file
-	     supplies the settings that don't have a build-setting equivalent). -->
+	<key>CFBundleIdentifier</key>
+	<string>io.bheka.agent</string>
+
+	<key>CFBundleExecutable</key>
+	<string>BhekaAgent</string>
+
+	<key>CFBundleName</key>
+	<string>BhekaAgent</string>
 
 	<key>CFBundleDisplayName</key>
 	<string>Bheka Agent</string>
 
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.0</string>
+
 	<key>CFBundleVersion</key>
 	<string>1</string>
 
-	<!-- Permission usage strings — required by iOS or the app will crash when the
-	     corresponding API is first invoked. Text is shown to the device user (or the IT
-	     admin during enrollment) in the system permission prompt. -->
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+
 	<key>NSCameraUsageDescription</key>
 	<string>Bheka Agent uses the camera to scan enrollment QR codes provided by your IT administrator.</string>
 
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Bheka Agent does not record audio, but ReplayKit requires this permission string to be present.</string>
 
-	<!-- Screen recording via ReplayKit does not require a dedicated Info.plist usage
-	     string the way camera/microphone do; the system broadcast picker itself is the
-	     user consent surface. -->
-
-	<!-- Background Modes: allows the background URLSession (ApiClient.swift) to be
-	     resumed and to deliver completion callbacks after the app is suspended. -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
@@ -49,10 +48,6 @@
 	<key>UIRequiresFullScreen</key>
 	<false/>
 
-	<!-- App Transport Security exception for the default Bheka on-prem server, which is
-	     served over plain HTTP on a private/VPN network (100.87.148.94). Remove this
-	     exception (or narrow it to your actual server's domain/IP) once the Bheka API is
-	     served over HTTPS, which is strongly recommended for production. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
