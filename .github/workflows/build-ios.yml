@@ -18,15 +18,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16
+      - name: Select Xcode
         run: |
-          sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer || \
+          sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer 2>/dev/null || \
           sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
+
+      - name: List project schemes
+        working-directory: mobile/ios
+        run: xcodebuild -project BhekaAgent.xcodeproj -list
 
       - name: Build archive (unsigned)
         working-directory: mobile/ios
         run: |
+          set -o pipefail
           xcodebuild archive \
             -project BhekaAgent.xcodeproj \
             -scheme BhekaAgent \
@@ -37,32 +42,39 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
-            2>&1 | tail -50
-          echo "Archive exit: ${PIPESTATUS[0]}"
+            2>&1 | tee /tmp/xcodebuild.log
+          echo "--- xcodebuild exit: ${PIPESTATUS[0]} ---"
 
-      - name: Verify archive
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: /tmp/xcodebuild.log
+          retention-days: 3
+
+      - name: Verify archive and package IPA
         run: |
+          echo "=== Archive tree ==="
+          find "$RUNNER_TEMP/BhekaAgent.xcarchive" -maxdepth 4 2>/dev/null || echo "Archive not found"
+
           APP="$RUNNER_TEMP/BhekaAgent.xcarchive/Products/Applications/BhekaAgent.app"
-          if [ -d "$APP" ]; then
-            echo "Archive OK — app bundle found"
-            echo "Bundle ID in built plist: $(defaults read "$APP/Info.plist" CFBundleIdentifier 2>/dev/null || echo 'NOT FOUND')"
-            echo "App size: $(du -sh "$APP")"
-          else
-            echo "ERROR: App bundle not found in archive"
-            ls -la "$RUNNER_TEMP/BhekaAgent.xcarchive/Products/" 2>/dev/null || echo "Archive dir missing"
+          if [ ! -d "$APP" ]; then
+            echo "ERROR: App bundle not found — check xcodebuild-log artifact for compiler errors"
             exit 1
           fi
 
-      - name: Package IPA
-        run: |
+          echo "Bundle ID: $(defaults read "$APP/Info.plist" CFBundleIdentifier 2>/dev/null || echo 'NOT FOUND')"
+          echo "App size: $(du -sh "$APP")"
+
           mkdir -p "$RUNNER_TEMP/Payload"
-          cp -r "$RUNNER_TEMP/BhekaAgent.xcarchive/Products/Applications/BhekaAgent.app" \
-                "$RUNNER_TEMP/Payload/BhekaAgent.app"
+          cp -r "$APP" "$RUNNER_TEMP/Payload/BhekaAgent.app"
           cd "$RUNNER_TEMP"
           zip -r BhekaAgent-unsigned.ipa Payload
           echo "IPA size: $(du -sh BhekaAgent-unsigned.ipa)"
 
       - name: Upload IPA
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: BhekaAgent-unsigned-ipa
