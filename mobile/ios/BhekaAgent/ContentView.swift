@@ -207,6 +207,14 @@ struct ContentView: View {
             Text("This device is monitored by your organization using the Bheka agent, as permitted by your company's device management (MDM) policy. Screen content, extracted text (OCR), and app usage timing are periodically sent to your organization's Bheka server.")
                 .font(.footnote)
                 .foregroundColor(.secondary)
+            // CFBundleVersion is set to the short git SHA at build time (see build-ios.yml).
+            // Surfacing it here means a single screenshot can always prove exactly which
+            // build/commit is installed on a device -- this has repeatedly been the real
+            // cause of "the fix didn't work" reports that were actually just a stale binary
+            // that hadn't been reinstalled yet.
+            Text("Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown")")
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
     }
 }

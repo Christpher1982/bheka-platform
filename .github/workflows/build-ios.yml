@@ -32,6 +32,13 @@ jobs:
         working-directory: mobile/ios
         run: |
           set -o pipefail
+          # Bake the short git SHA into CFBundleVersion so any screenshot of the app's
+          # About section unambiguously proves which build/commit is actually installed
+          # on a device -- this has repeatedly been the real source of confusion when a
+          # fix appeared to "not work" but the device was simply still running an older
+          # binary that hadn't been reinstalled yet.
+          GIT_SHA=$(git rev-parse --short HEAD)
+          echo "Building with CFBundleVersion=$GIT_SHA"
           xcodebuild archive \
             -project BhekaAgent.xcodeproj \
             -scheme BhekaAgent \
@@ -41,6 +48,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
+            CURRENT_PROJECT_VERSION="$GIT_SHA" \
             2>&1 | tee /tmp/xcodebuild.log
           echo "--- xcodebuild exit: ${PIPESTATUS[0]} ---"
 
