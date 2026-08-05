@@ -319,6 +319,13 @@ final class EnrollmentViewModel: ObservableObject {
 
     func stopMonitoring() {
         captureManager.stopCapture()
+        // This must be persisted to the shared App Group store, not just the local
+        // @Published property -- the 2s status-polling timer below reads straight from
+        // ConfigStore.isMonitoringActive() and will silently stomp the local value back
+        // to true within a couple seconds otherwise, which is exactly why "Stop Monitoring"
+        // appeared to do nothing in testing (confirmed: screenshots always showed it
+        // snapping back to "Monitoring active").
+        ConfigStore.setMonitoringActive(false)
         isMonitoringActive = false
         startMonitoringRequested = false
     }
