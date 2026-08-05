@@ -5,6 +5,11 @@ name: iOS UI Redesign - Simulator Build & Screenshots (temporary, review-only)
 # intended to be merged into main long-term -- see PR description.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/ios-ui-redesign
+    paths:
+      - '.github/workflows/ios-ui-redesign-simulator-screenshots.yml'
 
 jobs:
   build-and-screenshot:
