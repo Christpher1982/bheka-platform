@@ -21,11 +21,26 @@ struct ContentView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                statusSection
-                configSection
-                actionsSection
-                aboutSection
+            ZStack(alignment: .bottom) {
+                Form {
+                    statusSection
+                    configSection
+                    actionsSection
+                    aboutSection
+                }
+
+                // IMPORTANT: RPSystemBroadcastPickerView must live OUTSIDE the Form/List.
+                // Confirmed by on-device testing: when embedded as a Form/Section row, the
+                // button is fully visible but taps on it are silently swallowed -- Form
+                // renders as a UITableView under the hood, and its cell touch handling does
+                // not forward touches to arbitrary embedded UIKit controls (only to native
+                // SwiftUI Buttons, which is why every *other* button in this screen works
+                // fine while this one alone did nothing). Presenting it as a floating
+                // overlay above the Form, outside any List/Section, gives it a real,
+                // unshadowed touch path.
+                if viewModel.startMonitoringRequested {
+                    broadcastPickerOverlay
+                }
             }
             .navigationTitle("Bheka Agent")
             .onAppear { viewModel.loadConfig() }
@@ -38,6 +53,32 @@ struct ContentView: View {
                     onCancel: { showingQRScanner = false }
                 )
             }
+        }
+    }
+
+    private var broadcastPickerOverlay: some View {
+        VStack(spacing: 10) {
+            Text("Tap the blue button below to choose \"Bheka Monitoring\" and start background monitoring.")
+                .font(.footnote)
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+            ZStack {
+                Circle()
+                    .fill(Color.blue)
+                    .frame(width: 64, height: 64)
+                BroadcastPickerView(preferredExtension: BroadcastConstants.extensionBundleId)
+                    .frame(width: 56, height: 56)
+            }
+        }
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity)
+        .background(Color.black.opacity(0.92))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+        .onAppear {
+            viewModel.saveConfig()
         }
     }
 
@@ -146,34 +187,15 @@ struct ContentView: View {
                 .disabled(!viewModel.config.isComplete)
             }
 
-            // RPSystemBroadcastPickerView must be presented via its own UIViewRepresentable
-            // wrapper — there's no way to trigger the system broadcast picker purely in
-            // code, and iOS does not allow a synthetic/programmatic tap to open it (this
-            // is a deliberate privacy restriction on this specific control, confirmed by
-            // on-device testing: a simulated touchUpInside produces no picker at all).
-            // So we show the *real* system button here, sized to look like a normal row,
-            // and the user taps it directly. Selecting "Bheka Monitoring" and confirming
-            // "Start Broadcast" is what actually launches BhekaBroadcastExtension, which
-            // is the only capture path that keeps running once this app is backgrounded
-            // or closed.
+            // The actual RPSystemBroadcastPickerView button is rendered as a floating
+            // overlay outside this Form -- see broadcastPickerOverlay / body. Embedding it
+            // directly in this Section silently ate all taps on-device (see the comment on
+            // broadcastPickerOverlay for the full explanation); this row only shows a hint
+            // once Start Monitoring has been tapped.
             if viewModel.startMonitoringRequested {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        ZStack {
-                            Circle()
-                                .fill(Color.blue)
-                                .frame(width: 50, height: 50)
-                            BroadcastPickerView(preferredExtension: BroadcastConstants.extensionBundleId)
-                                .frame(width: 44, height: 44)
-                        }
-                        Text("Tap the blue record button to choose \"Bheka Monitoring\" and start background monitoring.")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .onAppear {
-                    viewModel.saveConfig()
-                }
+                Text("Look for the floating blue button at the bottom of the screen and tap it to continue.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
             }
 
             if !viewModel.config.isComplete {
