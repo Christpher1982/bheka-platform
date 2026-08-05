@@ -124,15 +124,27 @@ struct ContentView: View {
 
             // RPSystemBroadcastPickerView must be presented via its own UIViewRepresentable
             // wrapper — there's no way to trigger the system broadcast picker purely in
-            // code. We overlay a hidden picker and programmatically tap it once the user
-            // confirms "Start Monitoring" above.
+            // code, and iOS does not allow a synthetic/programmatic tap to open it (this
+            // is a deliberate privacy restriction on this specific control, confirmed by
+            // on-device testing: a simulated touchUpInside produces no picker at all).
+            // So we show the *real* system button here, sized to look like a normal row,
+            // and the user taps it directly. Selecting "Bheka Monitoring" and confirming
+            // "Start Broadcast" is what actually launches BhekaBroadcastExtension, which
+            // is the only capture path that keeps running once this app is backgrounded
+            // or closed.
             if viewModel.startMonitoringRequested {
-                BroadcastPickerView(preferredExtension: BroadcastConstants.extensionBundleId)
-                    .frame(width: 1, height: 1)
-                    .onAppear {
-                        viewModel.saveConfig()
-                        viewModel.captureManager.startCapture()
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        BroadcastPickerView(preferredExtension: BroadcastConstants.extensionBundleId)
+                            .frame(width: 44, height: 44)
+                        Text("Tap the record button to choose \"Bheka Monitoring\" and start background monitoring.")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
                     }
+                }
+                .onAppear {
+                    viewModel.saveConfig()
+                }
             }
 
             if !viewModel.config.isComplete {
@@ -169,18 +181,6 @@ struct BroadcastPickerView: UIViewRepresentable {
         let picker = RPSystemBroadcastPickerView(frame: .zero)
         picker.preferredExtension = preferredExtension
         picker.showsMicrophoneButton = false
-        // RPSystemBroadcastPickerView only reveals its "Start Broadcast" system UI when
-        // its internal UIButton receives a genuine touchUpInside action. SwiftUI has no
-        // way to route a real tap to a 1x1 hidden UIKit view, so we simulate the control
-        // event directly once the button subview has been laid out. A short delay avoids
-        // racing the view's own internal setup.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            for subview in picker.subviews {
-                if let button = subview as? UIButton {
-                    button.sendActions(for: .touchUpInside)
-                }
-            }
-        }
         return picker
     }
 
