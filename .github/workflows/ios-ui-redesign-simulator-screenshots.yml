@@ -1,0 +1,109 @@
+name: iOS UI Redesign - Simulator Build & Screenshots (temporary, review-only)
+
+# TEMPORARY workflow added only on feature/ios-ui-redesign to produce Simulator
+# build verification + screenshots for PR review, per task requirements. Not
+# intended to be merged into main long-term -- see PR description.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-screenshot:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer 2>/dev/null || \
+          sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: List available simulators
+        run: xcrun simctl list devicetypes | head -30 && xcrun simctl list runtimes
+
+      - name: Build for iOS Simulator
+        working-directory: mobile/ios
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project BhekaAgent.xcodeproj \
+            -scheme BhekaAgent \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            2>&1 | tee /tmp/xcodebuild-sim.log
+          echo "--- xcodebuild exit: ${PIPESTATUS[0]} ---"
+
+      - name: Upload generic build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-simulator-log
+          path: /tmp/xcodebuild-sim.log
+          retention-days: 3
+
+      - name: Build + install + launch on a booted Simulator, then screenshot
+        working-directory: mobile/ios
+        run: |
+          set -o pipefail
+          DEVICE_NAME="BhekaUI-iPhone16"
+          RUNTIME=$(xcrun simctl list runtimes | grep -Eo 'iOS [0-9]+\.[0-9]+' | tail -1)
+          echo "Using runtime: $RUNTIME"
+          DEVICE_ID=$(xcrun simctl create "$DEVICE_NAME" "iPhone 16" "com.apple.CoreSimulator.SimRuntime.$(echo $RUNTIME | sed 's/iOS /iOS-/; s/\./-/g')" || true)
+          if [ -z "$DEVICE_ID" ]; then
+            DEVICE_ID=$(xcrun simctl list devices | grep "$DEVICE_NAME" | grep -Eo '[0-9A-F-]{36}' | head -1)
+          fi
+          echo "Device ID: $DEVICE_ID"
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+
+          xcodebuild build \
+            -project BhekaAgent.xcodeproj \
+            -scheme BhekaAgent \
+            -destination "id=$DEVICE_ID" \
+            -derivedDataPath /tmp/DerivedData \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            2>&1 | tee /tmp/xcodebuild-install.log
+
+          APP_PATH=$(find /tmp/DerivedData -maxdepth 6 -name "BhekaAgent.app" | head -1)
+          echo "App path: $APP_PATH"
+          xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+          xcrun simctl launch "$DEVICE_ID" io.bheka.agent
+          sleep 6
+
+          mkdir -p /tmp/screenshots
+          xcrun simctl io "$DEVICE_ID" screenshot /tmp/screenshots/01_status_home.png
+
+          # Attempt to reveal the QR scanner sheet is out of scope for a scripted
+          # UI-less tap sequence without XCTest UI automation; capturing the main
+          # status/config screen (which contains status card, config card, and the
+          # bottom docked action bar / instructional state) covers the primary
+          # redesign surfaces requested.
+          sleep 2
+          xcrun simctl io "$DEVICE_ID" screenshot /tmp/screenshots/02_status_home_after_delay.png
+
+          xcrun simctl shutdown "$DEVICE_ID" || true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-screenshots
+          path: /tmp/screenshots
+          retention-days: 7
+
+      - name: Upload install/launch log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-install-log
+          path: /tmp/xcodebuild-install.log
+          retention-days: 3
