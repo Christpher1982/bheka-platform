@@ -124,9 +124,18 @@ final class ScreenCaptureManager: ObservableObject {
             return
         }
 
+        // Run OCR against the already-downscaled image, not the raw full-resolution
+        // capture. This mirrors the same fix applied to SampleHandler.swift's pipeline:
+        // OCR-ing the full-resolution retina frame is significantly slower and more
+        // memory-hungry than necessary, and doing it twice (whole-image + top-bar crop)
+        // against the original compounds that for no accuracy benefit at the text sizes
+        // actually present in UI screenshots. The in-app path has a much larger memory
+        // budget than the Broadcast Extension so this was never fatal here, but it was
+        // still the same unnecessary cost and worth fixing for consistency + latency.
+        let scaledForOCR = ImageProcessor.scaledDown(uiImage)
         // OCR failures should not block the screenshot upload — ocrText is nullable per spec.
-        let ocrText = OCRProcessor.recognizeText(in: uiImage)
-        let windowTitle = OCRProcessor.recognizeTopBarText(in: uiImage) ?? "unknown"
+        let ocrText = OCRProcessor.recognizeText(in: scaledForOCR)
+        let windowTitle = OCRProcessor.recognizeTopBarText(in: scaledForOCR) ?? "unknown"
 
         let base64 = ImageProcessor.base64(processed.jpegData)
         let metadata = ScreenshotMetadata(

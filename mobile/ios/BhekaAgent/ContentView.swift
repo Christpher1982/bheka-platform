@@ -67,8 +67,21 @@ struct ContentView: View {
                 Circle()
                     .fill(Color.blue)
                     .frame(width: 64, height: 64)
-                BroadcastPickerView(preferredExtension: BroadcastConstants.extensionBundleId)
-                    .frame(width: 56, height: 56)
+                    // ROOT CAUSE FIX: this Circle used to be an ordinary sibling in the
+                    // ZStack with no hit-testing opinion of its own. That is *not* what
+                    // was swallowing the tap (SwiftUI ZStack hit-tests top-most-drawn
+                    // view first, and the picker is drawn after/above the circle), but
+                    // we explicitly disable hit-testing on it anyway so it can never be
+                    // implicated again and so the picker is unambiguously the only
+                    // interactive element in this stack.
+                    .allowsHitTesting(false)
+                BroadcastPickerView(
+                    preferredExtension: BroadcastConstants.extensionBundleId
+#if DEBUG
+                    , onTouchDetected: { viewModel.pickerTouchProbeCount += 1 }
+#endif
+                )
+                .frame(width: 56, height: 56)
             }
         }
         .padding(.vertical, 20)
@@ -77,6 +90,14 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
+#if DEBUG
+        .overlay(alignment: .top) {
+            Text("Picker frame touches: \(viewModel.pickerTouchProbeCount)")
+                .font(.caption2.monospacedDigit())
+                .foregroundColor(.yellow)
+                .padding(.top, -18)
+        }
+#endif
         .onAppear {
             viewModel.saveConfig()
         }
@@ -253,9 +274,37 @@ enum BroadcastConstants {
 /// which the user must tap to actually begin the extension-based capture session.
 struct BroadcastPickerView: UIViewRepresentable {
     let preferredExtension: String
+#if DEBUG
+    var onTouchDetected: (() -> Void)? = nil
+#endif
+
+    // ROOT CAUSE of the tap-not-working bug: RPSystemBroadcastPickerView does NOT
+    // resize its internal UIButton subview in response to later Auto Layout / frame
+    // changes -- this is a long-documented ReplayKit quirk (see e.g.
+    // https://stackoverflow.com/questions/66190741/why-is-rpbroadcastpickerview-rendering-a-blank-white-screen
+    // and the Apple Developer Forums ReplayKit threads: "changing the frame property
+    // doesn't resize RPSystemBroadcastPickerView... Autolayout doesn't resize the view
+    // as well... calling initWithFrame with a real size is the only correct solution").
+    // The previous code did `RPSystemBroadcastPickerView(frame: .zero)` and relied
+    // entirely on the SwiftUI `.frame(width: 56, height: 56)` modifier applied to the
+    // wrapper further up the view tree. That modifier resizes the *outer*
+    // UIHostingView-managed container via Auto Layout, but never reaches into the
+    // picker's own internal button subview, which stays permanently sized to whatever
+    // was passed at init time -- i.e. zero. A zero-sized internal UIButton cannot
+    // receive touchUpInside, so every tap in the visually-56x56-looking button area
+    // hit the (correctly sized) outer container view and went nowhere: no gesture
+    // recognizer or button target ever fired. This is exactly consistent with what was
+    // observed -- a fully visible, correctly laid-out button that never responds to any
+    // tap, on every one of the 3 previous fix attempts, none of which touched this line.
+    //
+    // Fix: construct the picker with its real, final on-screen size up front so its
+    // internal button is laid out correctly from the start.
+    static let pickerSize = CGSize(width: 56, height: 56)
 
     func makeUIView(context: Context) -> RPSystemBroadcastPickerView {
-        let picker = RPSystemBroadcastPickerView(frame: .zero)
+        let picker = RPSystemBroadcastPickerView(
+            frame: CGRect(origin: .zero, size: Self.pickerSize)
+        )
         picker.preferredExtension = preferredExtension
         picker.showsMicrophoneButton = false
         // Without an explicit tint, this control renders using the extension's icon
@@ -266,10 +315,63 @@ struct BroadcastPickerView: UIViewRepresentable {
         // whether the extension bundle has its own icon set up.
         picker.tintColor = .white
         picker.backgroundColor = .clear
+        // Belt-and-suspenders: some iOS versions have been observed leaving
+        // isUserInteractionEnabled at its default (true) but with a stray disabled
+        // ancestor; asserting it explicitly here means a regression would be caught by
+        // just reading this file rather than needing a device to notice taps stopped
+        // working again.
+        picker.isUserInteractionEnabled = true
+
+#if DEBUG
+        // Non-consuming touch probe: a UITapGestureRecognizer with
+        // cancelsTouchesInView = false observes every touch that lands in the picker's
+        // bounds WITHOUT intercepting or consuming it, so the picker's own internal
+        // button still receives the touch normally afterward. This is what lets
+        // on-device testing tell apart "tap never reaches this view" (counter stays at
+        // 0) from "view gets the tap but the picker itself doesn't launch the sheet"
+        // (counter increments, no sheet).
+        let probe = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleProbeTap)
+        )
+        probe.cancelsTouchesInView = false
+        probe.delegate = context.coordinator
+        picker.addGestureRecognizer(probe)
+#endif
         return picker
     }
 
     func updateUIView(_ uiView: RPSystemBroadcastPickerView, context: Context) {}
+
+#if DEBUG
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onTouchDetected: onTouchDetected)
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        let onTouchDetected: (() -> Void)?
+
+        init(onTouchDetected: (() -> Void)?) {
+            self.onTouchDetected = onTouchDetected
+        }
+
+        @objc func handleProbeTap() {
+            onTouchDetected?()
+        }
+
+        // Required so this recognizer runs alongside whatever internal gesture
+        // recognizer(s) RPSystemBroadcastPickerView's own UIButton uses -- without this,
+        // UIKit's default "one gesture wins" behavior could make the probe itself the
+        // thing swallowing the tap, which would defeat its entire purpose as a
+        // non-invasive diagnostic.
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            true
+        }
+    }
+#endif
 }
 
 /// Owns all enrollment/config/monitoring state for ContentView.
@@ -284,6 +386,12 @@ final class EnrollmentViewModel: ObservableObject {
     @Published var lastUploadError: String?
     @Published var isTestingConnection = false
     @Published var connectionTestResult: (success: Bool, message: String)?
+#if DEBUG
+    /// Diagnostic-only counter incremented by BroadcastPickerView's non-consuming touch
+    /// probe. See the comment on BroadcastPickerView for how this is used to tell apart
+    /// "tap not reaching the view" from "view receiving tap but picker not launching".
+    @Published var pickerTouchProbeCount = 0
+#endif
 
     let captureManager = ScreenCaptureManager()
     private let appUsageTracker = AppUsageTracker.shared

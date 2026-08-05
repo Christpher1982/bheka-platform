@@ -117,7 +117,20 @@ final class SampleHandler: RPBroadcastSampleHandler {
             guard error == nil, let observations = request.results as? [VNRecognizedTextObservation] else { return }
             resultText = observations.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
         }
-        request.recognitionLevel = .accurate
+        // BUG FIX: this used to run with .accurate on the FULL-RESOLUTION frame, called
+        // TWICE per processed frame (once here for the whole-image OCR pass, once again
+        // inside recognizeTopBarText's fallback path) inside a hard 50MB-memory-capped
+        // extension process. Vision's .accurate recognizer allocates significant
+        // internal working memory proportional to input image size, and doing that twice
+        // on a full-resolution retina capture (which alone is already 10-25MB as a raw
+        // decoded CGImage) reliably pushes total resident memory over the 50MB ceiling,
+        // so iOS jetsam-kills the extension (EXC_RESOURCE / RESOURCE_TYPE_MEMORY) before
+        // the pipeline ever reaches ExtensionConfigStore.setLastScreenshotAt or the
+        // network POST -- which is exactly consistent with "Last frame captured on
+        // device" never updating even though capture visibly starts. .fast trades some
+        // recognition accuracy for a much smaller/faster pass and is the level Apple
+        // explicitly recommends for memory/latency constrained contexts like this.
+        request.recognitionLevel = .fast
         request.usesLanguageCorrection = true
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         try? handler.perform([request])
@@ -125,12 +138,15 @@ final class SampleHandler: RPBroadcastSampleHandler {
         return resultText
     }
 
-    private func recognizeTopBarText(in image: UIImage) -> String? {
-        guard let cgImage = image.cgImage else { return nil }
+    /// Crops the top ~6% of an already-scaled-down image and OCRs just that strip. Must
+    /// only ever be called with the small (max-1280px-wide) image, never the raw capture
+    /// -- see the memory-budget comment on processAndUpload.
+    private func recognizeTopBarText(in scaledImage: UIImage) -> String? {
+        guard let cgImage = scaledImage.cgImage else { return nil }
         let height = CGFloat(cgImage.height)
         let width = CGFloat(cgImage.width)
         let cropRect = CGRect(x: 0, y: 0, width: width, height: max(height * 0.06, 40))
-        guard let cropped = cgImage.cropping(to: cropRect) else { return recognizeText(in: cgImage) }
+        guard let cropped = cgImage.cropping(to: cropRect) else { return nil }
         return recognizeText(in: cropped)
     }
 
@@ -139,8 +155,23 @@ final class SampleHandler: RPBroadcastSampleHandler {
         guard let jpegData = scaled.jpegData(compressionQuality: 0.55) else { return }
         let base64 = jpegData.base64EncodedString()
 
-        let ocrText = uiImage.cgImage.flatMap { recognizeText(in: $0) }
-        let windowTitle = recognizeTopBarText(in: uiImage) ?? "unknown"
+        // Record "captured on device" as soon as we have a usable encoded frame, BEFORE
+        // the (slower, more memory-intensive) OCR passes and the network call. Previously
+        // this was the very last line of the function, so any crash/jetsam-kill or stall
+        // during OCR/upload meant this flag never got written at all, even though a frame
+        // genuinely had been captured and encoded on-device -- this is the other half of
+        // why "Last frame captured on device" appeared to never update.
+        ExtensionConfigStore.setLastScreenshotAt(capturedAt)
+
+        // MEMORY BUDGET: this extension process has a hard 50MB ceiling (see ReplayKit
+        // docs / Apple developer forums re: EXC_RESOURCE RESOURCE_TYPE_MEMORY). Both OCR
+        // passes below now run against `scaled` (max 1280px wide) instead of the raw,
+        // full-resolution `uiImage` -- OCR-ing the original retina-resolution frame twice
+        // per sample was the single largest avoidable memory/CPU cost in this pipeline and
+        // the most likely reason the extension was being killed before it could report a
+        // captured frame or complete an upload.
+        let ocrText = scaled.cgImage.flatMap { recognizeText(in: $0) }
+        let windowTitle = recognizeTopBarText(in: scaled) ?? "unknown"
 
         ExtensionApiClient.shared.postScreenshot(
             imageBase64: base64,
@@ -157,8 +188,6 @@ final class SampleHandler: RPBroadcastSampleHandler {
             endedAt: capturedAt,
             occurredAt: capturedAt
         )
-
-        ExtensionConfigStore.setLastScreenshotAt(capturedAt)
     }
 
     /// Called by the OS if the extension is about to be terminated (e.g. memory

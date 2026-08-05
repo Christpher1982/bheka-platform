@@ -283,3 +283,22 @@ camera at a QR code encoding the JSON above. The values are written to both stan
   silently start screen recording without this explicit, system-owned consent gesture.
 - **Simulator cannot test ReplayKit or Broadcast Upload Extensions.** Always test on a
   physical device.
+
+## Canonical source location (there is only ONE copy of this app)
+
+`mobile/ios/` inside this git repository (`bheka-platform`) is the single source of
+truth for BhekaAgent and BhekaBroadcastExtension. `.github/workflows/build-ios.yml`
+builds directly from this checked-out path via `actions/checkout` and nothing else.
+
+A second, non-git-tracked copy of these same files previously existed on the shared
+workspace filesystem at `~/workspace/mobile/ios` (outside any git repository, most
+likely left over from unzipping a local snapshot for on-device iteration). Because it
+wasn't tracked by git, edits made there silently diverged from this repo and never
+reached CI or PR review — a real, repeated source of the "I fixed it but it still
+doesn't work on device" confusion during the picker-tap investigation. That path has
+been replaced with a symlink pointing at this directory
+(`~/workspace/mobile -> bheka-platform/mobile`), so there is now only one real copy of
+these files on disk; any tool or person that still navigates to the old path
+transparently edits the exact same files tracked here. The stray original was preserved
+as a timestamped backup rather than deleted, but should not be used as an editing
+location going forward.
