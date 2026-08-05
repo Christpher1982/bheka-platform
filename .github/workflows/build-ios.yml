@@ -37,7 +37,6 @@ jobs:
             -scheme BhekaAgent \
             -destination "generic/platform=iOS" \
             -archivePath "$RUNNER_TEMP/BhekaAgent.xcarchive" \
-            PRODUCT_BUNDLE_IDENTIFIER="io.bheka.agent" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
