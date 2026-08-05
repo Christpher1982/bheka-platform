@@ -69,7 +69,7 @@ jobs:
           xcodebuild build \
             -project BhekaAgent.xcodeproj \
             -scheme BhekaAgent \
-            -destination "id=$DEVICE_ID" \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -98,7 +98,7 @@ jobs:
           xcodebuild build \
             -project BhekaAgent.xcodeproj \
             -scheme BhekaAgent \
-            -destination "id=$DEVICE_ID" \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
             -derivedDataPath /tmp/DerivedData \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
