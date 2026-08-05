@@ -51,6 +51,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         lastSampleTime = .distantPast
         currentWindowStart = Date()
         ExtensionConfigStore.setMonitoringActive(true)
+        ExtensionConfigStore.markExtensionAlive(stage: "broadcastStarted")
     }
 
     override func broadcastPaused() {
@@ -72,6 +73,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let now = Date()
         guard now.timeIntervalSince(lastSampleTime) >= sampleInterval else { return }
         lastSampleTime = now
+        ExtensionConfigStore.markExtensionAlive(stage: "processSampleBuffer:gatePassed")
 
         let windowStart = currentWindowStart
 
@@ -81,7 +83,32 @@ final class SampleHandler: RPBroadcastSampleHandler {
         guard let uiImage = imageFromSampleBuffer(sampleBuffer) else { return }
 
         processingQueue.async { [weak self] in
-            self?.processAndUpload(uiImage: uiImage, capturedAt: now, windowStart: windowStart)
+            // ROOT CAUSE (missing "Last frame captured on device"): even after the
+            // previous fix (moving setLastScreenshotAt earlier + OCR-ing the scaled
+            // image instead of full-res), this extension was still living right at the
+            // edge of the hard 50MB jetsam ceiling. Measured concurrent footprint for a
+            // single sampled frame on a typical device, immediately before OCR even
+            // starts: ~11MB raw full-resolution CGImage/UIImage (retained the whole time
+            // as processAndUpload's `uiImage` parameter, even though only `scaled` is
+            // used after the first line) + ~13MB decoded bitmap while rendering the
+            // scaled-down copy + ~1MB JPEG + ~1.5MB base64 string == ~27MB, on top of the
+            // extension's own baseline (Swift runtime, ReplayKit/Vision/Foundation
+            // framework loading, URLSession) which typically runs several MB to low tens
+            // of MB on its own. That leaves near-zero headroom before OCR, encoding
+            // overhead, or a second in-flight frame ever enters the picture -- entirely
+            // consistent with a jetsam kill so early that setLastScreenshotAt never even
+            // gets to run, matching "the row is fully absent" (not just stale) reported
+            // after the physical test.
+            //
+            // Fix: (1) wrap the whole per-frame pipeline in autoreleasepool so every
+            // Core Graphics/Vision temporary is deallocated the instant this block
+            // exits rather than drifting to the end of the queue's next drain cycle;
+            // (2) explicitly drop the reference to the raw full-resolution image as soon
+            // as the scaled copy exists, instead of holding both alive for the rest of
+            // the function via a retained parameter.
+            autoreleasepool {
+                self?.processAndUpload(uiImage: uiImage, capturedAt: now, windowStart: windowStart)
+            }
             self?.currentWindowStart = now
         }
     }
@@ -150,28 +177,42 @@ final class SampleHandler: RPBroadcastSampleHandler {
         return recognizeText(in: cropped)
     }
 
-    private func processAndUpload(uiImage: UIImage, capturedAt: Date, windowStart: Date) {
-        let scaled = scaledDown(uiImage)
-        guard let jpegData = scaled.jpegData(compressionQuality: 0.55) else { return }
-        let base64 = jpegData.base64EncodedString()
-
-        // Record "captured on device" as soon as we have a usable encoded frame, BEFORE
-        // the (slower, more memory-intensive) OCR passes and the network call. Previously
-        // this was the very last line of the function, so any crash/jetsam-kill or stall
-        // during OCR/upload meant this flag never got written at all, even though a frame
-        // genuinely had been captured and encoded on-device -- this is the other half of
-        // why "Last frame captured on device" appeared to never update.
+    private func processAndUpload(uiImage rawImage: UIImage, capturedAt: Date, windowStart: Date) {
+        // Record "captured on device" the moment we have ANY decoded frame in hand --
+        // before scaling, JPEG encoding, OCR, or network I/O. This is the earliest
+        // truthful point at which we can say a frame was genuinely captured; every step
+        // after this one is a candidate for a jetsam kill or a slow/failed upload, and
+        // none of those should retroactively make an already-captured frame look like
+        // it never happened.
         ExtensionConfigStore.setLastScreenshotAt(capturedAt)
 
         // MEMORY BUDGET: this extension process has a hard 50MB ceiling (see ReplayKit
-        // docs / Apple developer forums re: EXC_RESOURCE RESOURCE_TYPE_MEMORY). Both OCR
-        // passes below now run against `scaled` (max 1280px wide) instead of the raw,
-        // full-resolution `uiImage` -- OCR-ing the original retina-resolution frame twice
-        // per sample was the single largest avoidable memory/CPU cost in this pipeline and
-        // the most likely reason the extension was being killed before it could report a
-        // captured frame or complete an upload.
+        // docs / Apple developer forums re: EXC_RESOURCE RESOURCE_TYPE_MEMORY). Even
+        // after OCR-ing the scaled image instead of the full-resolution capture, the raw
+        // decoded frame (~10-25MB as an RGBA CGImage on modern devices) was being kept
+        // alive for the ENTIRE function via the retained `uiImage` parameter, even though
+        // only the scaled-down copy is used anywhere below this point. Rebinding through
+        // a mutable Optional and explicitly nil-ing it out here lets ARC deallocate the
+        // full-resolution buffer immediately once the scaled copy exists, instead of
+        // holding both in memory simultaneously for the rest of the pipeline (OCR x2 +
+        // JPEG + base64 + two network calls) -- exactly the margin this extension did not
+        // have before.
+        var mutableRawImage: UIImage? = rawImage
+        let scaled = scaledDown(mutableRawImage!)
+        mutableRawImage = nil
+        ExtensionConfigStore.markExtensionAlive(stage: "processAndUpload:scaled")
+
+        guard let jpegData = scaled.jpegData(compressionQuality: 0.55) else { return }
+        let base64 = jpegData.base64EncodedString()
+
+        // OCR passes run against `scaled` (max 1280px wide), never the raw full-resolution
+        // frame -- OCR-ing the original retina-resolution frame twice per sample was the
+        // single largest avoidable memory/CPU cost in this pipeline and a major
+        // contributor to the extension being killed before it could report a captured
+        // frame or complete an upload.
         let ocrText = scaled.cgImage.flatMap { recognizeText(in: $0) }
         let windowTitle = recognizeTopBarText(in: scaled) ?? "unknown"
+        ExtensionConfigStore.markExtensionAlive(stage: "processAndUpload:ocrDone")
 
         ExtensionApiClient.shared.postScreenshot(
             imageBase64: base64,
@@ -188,6 +229,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
             endedAt: capturedAt,
             occurredAt: capturedAt
         )
+        ExtensionConfigStore.markExtensionAlive(stage: "processAndUpload:complete")
     }
 
     /// Called by the OS if the extension is about to be terminated (e.g. memory

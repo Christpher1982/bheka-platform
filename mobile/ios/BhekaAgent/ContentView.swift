@@ -163,6 +163,19 @@ struct ContentView: View {
                     .font(.footnote)
                     .foregroundColor(.red)
             }
+
+            // Diagnostic-only: surfaces the Broadcast Extension's own heartbeat (see
+            // ExtensionConfigStore.markExtensionAlive / SampleHandler) so the next
+            // physical-device test can immediately tell whether the extension process
+            // ever launched at all, and if so exactly which pipeline stage it last
+            // checked in from before going quiet -- there was previously no way to
+            // distinguish "never launched", "launched then died quickly", and "still
+            // alive but stuck" from the host app's side.
+            if let aliveAt = viewModel.extensionLastAliveAt, let stage = viewModel.extensionLastStage {
+                Text("Extension last checked in: \(aliveAt.formatted(date: .omitted, time: .standard)) (\(stage))")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
     }
 
@@ -401,6 +414,8 @@ final class EnrollmentViewModel: ObservableObject {
     @Published var lastUploadError: String?
     @Published var isTestingConnection = false
     @Published var connectionTestResult: (success: Bool, message: String)?
+    @Published var extensionLastAliveAt: Date?
+    @Published var extensionLastStage: String?
 #if DEBUG
     /// Diagnostic-only counter incremented by BroadcastPickerView's non-consuming touch
     /// probe. See the comment on BroadcastPickerView for how this is used to tell apart
@@ -419,6 +434,8 @@ final class EnrollmentViewModel: ObservableObject {
         lastScreenshotAt = ConfigStore.lastScreenshotAt()
         lastUploadOkAt = ConfigStore.lastUploadOkAt()
         lastUploadError = ConfigStore.lastUploadError()
+        extensionLastAliveAt = ConfigStore.extensionLastAliveAt()
+        extensionLastStage = ConfigStore.extensionLastStage()
         appUsageTracker.start()
         refreshMDMFlag()
         startStatusPolling()
@@ -454,6 +471,23 @@ final class EnrollmentViewModel: ObservableObject {
                 self.lastScreenshotAt = ConfigStore.lastScreenshotAt()
                 self.lastUploadOkAt = ConfigStore.lastUploadOkAt()
                 self.lastUploadError = ConfigStore.lastUploadError()
+                self.extensionLastAliveAt = ConfigStore.extensionLastAliveAt()
+                self.extensionLastStage = ConfigStore.extensionLastStage()
+
+                // UI BUG FIX: startMonitoringRequested was never cleared once the user
+                // actually picked "Bheka Monitoring" and the broadcast genuinely started
+                // -- it was ONLY reset inside stopMonitoring(). That left the floating
+                // picker overlay permanently covering the bottom of the screen for the
+                // rest of the session: after backgrounding/foregrounding or navigating
+                // to the QR scanner sheet and back, the user would land back on a screen
+                // that still visually says "tap the button below to start" even though
+                // monitoring is genuinely active underneath, which reads exactly like
+                // "the broadcast stopped" even when ReplayKit itself never stopped
+                // anything. Once the poll confirms real capture is underway, dismiss the
+                // overlay so the UI reflects reality.
+                if self.isMonitoringActive && self.startMonitoringRequested {
+                    self.startMonitoringRequested = false
+                }
             }
         }
     }

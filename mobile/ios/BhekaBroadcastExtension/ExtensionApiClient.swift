@@ -37,6 +37,8 @@ enum ExtensionConfigStore {
         static let lastScreenshotAt = "BHEKA_LAST_SCREENSHOT_AT"
         static let lastUploadOkAt = "BHEKA_LAST_UPLOAD_OK_AT"
         static let lastUploadError = "BHEKA_LAST_UPLOAD_ERROR"
+        static let extensionLastAliveAt = "BHEKA_EXTENSION_LAST_ALIVE_AT"
+        static let extensionLastStage = "BHEKA_EXTENSION_LAST_STAGE"
     }
 
     struct Config {
@@ -81,6 +83,21 @@ enum ExtensionConfigStore {
 
     static func setLastUploadError(_ message: String) {
         UserDefaults(suiteName: appGroupId)?.set(message, forKey: Key.lastUploadError)
+    }
+
+    // MARK: - Diagnostics
+    //
+    // Lightweight extension-side heartbeat so the next physical-device test can tell
+    // apart "the extension process never launched / died before doing anything" from
+    // "it ran for a while and then died" from "it's still alive but stuck somewhere"
+    // -- all three look identical from the host app's perspective today (no visible
+    // signal at all). This is intentionally tiny (one timestamp + one short string per
+    // write) so it can never itself contribute to the extension's memory pressure.
+
+    static func markExtensionAlive(stage: String) {
+        let defaults = UserDefaults(suiteName: appGroupId)
+        defaults?.set(Date().timeIntervalSince1970, forKey: Key.extensionLastAliveAt)
+        defaults?.set(stage, forKey: Key.extensionLastStage)
     }
 }
 

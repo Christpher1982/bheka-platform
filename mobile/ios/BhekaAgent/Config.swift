@@ -71,6 +71,8 @@ enum ConfigStore {
         static let lastScreenshotAt = "BHEKA_LAST_SCREENSHOT_AT"
         static let lastUploadOkAt = "BHEKA_LAST_UPLOAD_OK_AT"
         static let lastUploadError = "BHEKA_LAST_UPLOAD_ERROR"
+        static let extensionLastAliveAt = "BHEKA_EXTENSION_LAST_ALIVE_AT"
+        static let extensionLastStage = "BHEKA_EXTENSION_LAST_STAGE"
     }
 
     // MARK: - Hard-coded fallback defaults
@@ -230,5 +232,21 @@ enum ConfigStore {
 
     static func lastUploadError() -> String? {
         shared.string(forKey: Key.lastUploadError)
+    }
+
+    // MARK: - Extension diagnostics
+    //
+    // Mirrors ExtensionConfigStore.markExtensionAlive's heartbeat so the host app's UI
+    // can show exactly how far the extension got before it stopped checking in --
+    // needed for the next physical test to distinguish "never launched" from "launched
+    // then died" from "still alive", none of which were distinguishable before.
+
+    static func extensionLastAliveAt() -> Date? {
+        let value = shared.double(forKey: Key.extensionLastAliveAt)
+        return value > 0 ? Date(timeIntervalSince1970: value) : nil
+    }
+
+    static func extensionLastStage() -> String? {
+        shared.string(forKey: Key.extensionLastStage)
     }
 }
