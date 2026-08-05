@@ -54,32 +54,38 @@ jobs:
           path: /tmp/xcodebuild-sim.log
           retention-days: 3
 
-      - name: Build + install + launch on a booted Simulator, then screenshot
-        working-directory: mobile/ios
+      - name: Find an available iPhone simulator
+        id: find_sim
         run: |
           set -o pipefail
-          echo "=== Available simulator devices ==="
-          xcrun simctl list devices available
-
-          # Use an existing pre-provisioned simulator (created by the Xcode/runner
-          # image) rather than trying to construct a runtime identifier by hand --
-          # far less brittle across Xcode/runner image versions.
-          DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-candidates = []
-for runtime, devices in data['devices'].items():
-    if 'iOS' not in runtime:
-        continue
-    for d in devices:
-        if d.get('isAvailable') and 'iPhone' in d.get('name', ''):
-            candidates.append((runtime, d))
-candidates.sort(key=lambda rd: rd[0])
-if not candidates:
-    sys.exit('No available iPhone simulator found')
-print(candidates[-1][1]['udid'])
-")
+          xcrun simctl list devices available -j > /tmp/sim_devices.json
+          cat > /tmp/find_device.py << 'PYEOF_SCRIPT'
+          import json
+          with open('/tmp/sim_devices.json') as f:
+              data = json.load(f)
+          candidates = []
+          for runtime, devices in data['devices'].items():
+              if 'iOS' not in runtime:
+                  continue
+              for d in devices:
+                  if d.get('isAvailable') and 'iPhone' in d.get('name', ''):
+                      candidates.append((runtime, d))
+          candidates.sort(key=lambda rd: rd[0])
+          if not candidates:
+              raise SystemExit('No available iPhone simulator found')
+          print(candidates[-1][1]['udid'])
+          PYEOF_SCRIPT
+          DEVICE_ID=$(python3 /tmp/find_device.py)
           echo "Device ID: $DEVICE_ID"
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Build + install + launch on a booted Simulator, then screenshot
+        working-directory: mobile/ios
+        env:
+          DEVICE_ID: ${{ steps.find_sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          echo "Using device: $DEVICE_ID"
           xcrun simctl boot "$DEVICE_ID"
           xcrun simctl bootstatus "$DEVICE_ID" -b
 
