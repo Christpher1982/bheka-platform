@@ -29,31 +29,6 @@ jobs:
       - name: List available simulators
         run: xcrun simctl list devicetypes | head -30 && xcrun simctl list runtimes
 
-      - name: Build for iOS Simulator
-        working-directory: mobile/ios
-        run: |
-          set -o pipefail
-          SIM_NAME=$(xcrun simctl list devicetypes | grep -Eo 'iPhone [0-9]+( Pro)?( Max)?' | tail -1)
-          echo "Using simulator device type for build destination: $SIM_NAME"
-          xcodebuild build \
-            -project BhekaAgent.xcodeproj \
-            -scheme BhekaAgent \
-            -destination "platform=iOS Simulator,name=$SIM_NAME" \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            DEVELOPMENT_TEAM="" \
-            2>&1 | tee /tmp/xcodebuild-sim.log
-          echo "--- xcodebuild exit: ${PIPESTATUS[0]} ---"
-
-      - name: Upload generic build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xcodebuild-simulator-log
-          path: /tmp/xcodebuild-sim.log
-          retention-days: 3
-
       - name: Find an available iPhone simulator
         id: find_sim
         run: |
@@ -73,11 +48,42 @@ jobs:
           candidates.sort(key=lambda rd: rd[0])
           if not candidates:
               raise SystemExit('No available iPhone simulator found')
-          print(candidates[-1][1]['udid'])
+          chosen = candidates[-1][1]
+          print(chosen['udid'])
+          print(chosen['name'])
           PYEOF_SCRIPT
-          DEVICE_ID=$(python3 /tmp/find_device.py)
-          echo "Device ID: $DEVICE_ID"
+          python3 /tmp/find_device.py > /tmp/find_device.out
+          DEVICE_ID=$(sed -n '1p' /tmp/find_device.out)
+          DEVICE_NAME=$(sed -n '2p' /tmp/find_device.out)
+          echo "Device ID: $DEVICE_ID ($DEVICE_NAME)"
           echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "device_name=$DEVICE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build for iOS Simulator (compile-only verification)
+        working-directory: mobile/ios
+        env:
+          DEVICE_ID: ${{ steps.find_sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          echo "Using device: $DEVICE_ID"
+          xcodebuild build \
+            -project BhekaAgent.xcodeproj \
+            -scheme BhekaAgent \
+            -destination "id=$DEVICE_ID" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            2>&1 | tee /tmp/xcodebuild-sim.log
+          echo "--- xcodebuild exit: ${PIPESTATUS[0]} ---"
+
+      - name: Upload generic build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-simulator-log
+          path: /tmp/xcodebuild-sim.log
+          retention-days: 3
 
       - name: Build + install + launch on a booted Simulator, then screenshot
         working-directory: mobile/ios
