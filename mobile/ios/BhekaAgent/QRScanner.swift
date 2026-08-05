@@ -40,7 +40,10 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .black
+        // Deep charcoal grey, matching the rest of the app's background instead of
+        // plain black -- only visible briefly before the camera preview layer covers
+        // it, but keeps the whole app consistent with the approved visual direction.
+        view.backgroundColor = UIColor(red: 0.065, green: 0.068, blue: 0.075, alpha: 1.0)
         configureSessionIfAuthorized()
         addCancelButton()
         addHintLabel()
@@ -125,37 +128,64 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
 
     // MARK: - UI chrome
 
+    // VISUAL REDESIGN NOTE: restyled to the frosted-glass + light-green-accent language
+    // used across the main app target (see Theme.swift). This is UIKit chrome (not
+    // SwiftUI), so it uses UIVisualEffectView for the same translucent blur effect as
+    // .ultraThinMaterial elsewhere -- purely presentational, no behavior changes.
     private func addCancelButton() {
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+        blur.layer.cornerRadius = 18
+        blur.layer.masksToBounds = true
+        blur.layer.borderWidth = 1
+        blur.layer.borderColor = UIColor.white.withAlphaComponent(0.14).cgColor
+        blur.translatesAutoresizingMaskIntoConstraints = false
+
         let button = UIButton(type: .system)
         button.setTitle("Cancel", for: .normal)
         button.setTitleColor(.white, for: .normal)
-        button.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        button.layer.cornerRadius = 8
-        button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
+        button.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+        button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 18, bottom: 8, right: 18)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-        view.addSubview(button)
+
+        view.addSubview(blur)
+        blur.contentView.addSubview(button)
         NSLayoutConstraint.activate([
-            button.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            button.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+            blur.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            blur.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            button.topAnchor.constraint(equalTo: blur.topAnchor),
+            button.bottomAnchor.constraint(equalTo: blur.bottomAnchor),
+            button.leadingAnchor.constraint(equalTo: blur.leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: blur.trailingAnchor)
         ])
     }
 
     private func addHintLabel() {
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+        blur.layer.cornerRadius = 14
+        blur.layer.masksToBounds = true
+        blur.layer.borderWidth = 1
+        blur.layer.borderColor = UIColor.white.withAlphaComponent(0.14).cgColor
+        blur.translatesAutoresizingMaskIntoConstraints = false
+
         let label = UILabel()
         label.text = "Point the camera at the Bheka enrollment QR code"
         label.textColor = .white
+        label.font = .systemFont(ofSize: 14, weight: .medium)
         label.textAlignment = .center
         label.numberOfLines = 0
-        label.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        label.layer.cornerRadius = 8
-        label.layer.masksToBounds = true
         label.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(label)
+
+        view.addSubview(blur)
+        blur.contentView.addSubview(label)
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            label.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            label.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -32)
+            blur.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            blur.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            blur.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -32),
+            label.topAnchor.constraint(equalTo: blur.topAnchor, constant: 12),
+            label.bottomAnchor.constraint(equalTo: blur.bottomAnchor, constant: -12),
+            label.leadingAnchor.constraint(equalTo: blur.leadingAnchor, constant: 16),
+            label.trailingAnchor.constraint(equalTo: blur.trailingAnchor, constant: -16)
         ])
     }
 

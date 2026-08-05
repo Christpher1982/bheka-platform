@@ -12,6 +12,12 @@
 //      app is backgrounded/suspended. In-app capture (ScreenCaptureManager) is used as
 //      a secondary path while this app itself is in the foreground.
 //
+//  VISUAL REDESIGN NOTE: this file was restyled to the grey-glass + green-accent visual
+//  direction (deep charcoal background, frosted glassmorphism cards, single light-green
+//  accent, bottom docked action bar). All state, bindings, and behavior are unchanged --
+//  every button/field still calls exactly the same EnrollmentViewModel methods it did
+//  before. Shared visual building blocks live in Theme.swift.
+//
 import SwiftUI
 import ReplayKit
 
@@ -22,27 +28,34 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ZStack(alignment: .bottom) {
-                Form {
-                    statusSection
-                    configSection
-                    actionsSection
-                    aboutSection
+                BhekaTheme.backgroundGradient
+
+                ScrollView {
+                    VStack(spacing: 20) {
+                        header
+
+                        statusCard
+                        configCard
+                        actionsCard
+                        aboutCard
+
+                        // Reserve space so content can scroll clear of the docked
+                        // bottom action bar instead of being covered by it.
+                        Color.clear.frame(height: 96)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
                 }
 
-                // IMPORTANT: RPSystemBroadcastPickerView must live OUTSIDE the Form/List.
-                // Confirmed by on-device testing: when embedded as a Form/Section row, the
-                // button is fully visible but taps on it are silently swallowed -- Form
-                // renders as a UITableView under the hood, and its cell touch handling does
-                // not forward touches to arbitrary embedded UIKit controls (only to native
-                // SwiftUI Buttons, which is why every *other* button in this screen works
-                // fine while this one alone did nothing). Presenting it as a floating
-                // overlay above the Form, outside any List/Section, gives it a real,
-                // unshadowed touch path.
-                if viewModel.startMonitoringRequested {
-                    broadcastPickerOverlay
-                }
+                // Bottom docked action bar: pill-shaped frosted glass bar containing the
+                // primary start/stop control. The RPSystemBroadcastPickerView itself
+                // still lives outside the ScrollView/Form content (see the long-standing
+                // comment below) -- it is now docked inside this bar's frame instead of
+                // floating loosely over the content, but its own hit-testing path is
+                // unchanged.
+                bottomActionBar
             }
-            .navigationTitle("Bheka Agent")
+            .navigationBarHidden(true)
             .onAppear { viewModel.loadConfig() }
             .sheet(isPresented: $showingQRScanner) {
                 QRScannerView(
@@ -54,9 +67,184 @@ struct ContentView: View {
                 )
             }
         }
+        .navigationViewStyle(.stack)
+        .preferredColorScheme(.dark)
     }
 
-    /// Builds the actual `BroadcastPickerView`. Split out from `broadcastPickerOverlay`
+    // MARK: - Header
+
+    private var header: some View {
+        HStack {
+            AppHeaderTitle(title: "Bheka Agent")
+            Spacer()
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    // MARK: - Bottom docked broadcast action bar
+    //
+    // IMPORTANT: RPSystemBroadcastPickerView must live OUTSIDE the ScrollView content
+    // (previously: outside the Form). Confirmed by on-device testing: when embedded as
+    // a Form/Section row, the button is fully visible but taps on it are silently
+    // swallowed -- Form/List-backed containers render as a UITableView under the hood,
+    // and cell touch handling does not forward touches to arbitrary embedded UIKit
+    // controls (only to native SwiftUI Buttons, which is why every *other* button in
+    // this screen works fine while this one alone did nothing). Presenting it as a
+    // sibling overlay anchored to the bottom of the ZStack, outside any List/Section/
+    // ScrollView, gives it a real, unshadowed touch path. This redesign keeps that same
+    // structural placement -- it is now visually docked inside a pill-shaped glass bar
+    // instead of floating loosely, but it remains a ZStack sibling of the scrollable
+    // content, not a descendant of it.
+    private var bottomActionBar: some View {
+        VStack(spacing: 10) {
+            if viewModel.startMonitoringRequested {
+                instructionalCallout
+            }
+
+            HStack {
+                Spacer()
+                ZStack {
+                    if viewModel.isMonitoringActive {
+                        // Already broadcasting: show a plain "Stop Monitoring" control
+                        // docked in the same bar position so the bar's layout doesn't
+                        // jump between states.
+                        dockedStopButton
+                    } else if viewModel.startMonitoringRequested {
+                        dockedBroadcastPicker
+                    } else {
+                        dockedStartButton
+                    }
+                }
+                Spacer()
+            }
+            .frame(height: 76)
+
+            Text(primaryActionCaption)
+                .font(.system(.footnote, design: .rounded).weight(.medium))
+                .foregroundColor(BhekaTheme.textSecondary)
+                .padding(.bottom, 4)
+        }
+        .padding(.top, 14)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.black.opacity(0.22))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(BhekaTheme.cardBorder, lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 20)
+        .disabled(!viewModel.config.isComplete && !viewModel.isMonitoringActive)
+        .opacity((!viewModel.config.isComplete && !viewModel.isMonitoringActive) ? 0.55 : 1.0)
+    }
+
+    private var primaryActionCaption: String {
+        if viewModel.isMonitoringActive {
+            return "Monitoring is active -- tap to stop"
+        } else if viewModel.startMonitoringRequested {
+            return "Tap the button to confirm \u{201C}Bheka Monitoring\u{201D}"
+        } else if !viewModel.config.isComplete {
+            return "Fill in all configuration fields to enable monitoring"
+        } else {
+            return "Tap to start monitoring"
+        }
+    }
+
+    /// Large circular start button shown before monitoring has been requested. Tapping
+    /// it reveals the real RPSystemBroadcastPickerView (dockedBroadcastPicker) in the
+    /// same spot, matching the reference image's single docked circular control.
+    private var dockedStartButton: some View {
+        Button {
+            viewModel.startMonitoringRequested = true
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(BhekaTheme.accentDim)
+                    .frame(width: 84, height: 84)
+                    .blur(radius: 12)
+                Circle()
+                    .fill(Color.white.opacity(0.14))
+                    .frame(width: 64, height: 64)
+                Circle()
+                    .stroke(BhekaTheme.accent, lineWidth: 2)
+                    .frame(width: 64, height: 64)
+                    .shadow(color: BhekaTheme.accent.opacity(0.8), radius: 10)
+                Image(systemName: "chevron.right.2")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(BhekaTheme.accent)
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(!viewModel.config.isComplete)
+    }
+
+    private var dockedStopButton: some View {
+        Button(role: .destructive) {
+            viewModel.stopMonitoring()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(BhekaTheme.accentDim)
+                    .frame(width: 84, height: 84)
+                    .blur(radius: 12)
+                Circle()
+                    .fill(Color.white.opacity(0.14))
+                    .frame(width: 64, height: 64)
+                Circle()
+                    .stroke(BhekaTheme.accent, lineWidth: 2)
+                    .frame(width: 64, height: 64)
+                    .shadow(color: BhekaTheme.accent.opacity(0.8), radius: 10)
+                Image(systemName: "stop.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(BhekaTheme.accent)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Docked container for the real RPSystemBroadcastPickerView. This restyles only the
+    /// surrounding chrome (glow ring, translucent disc behind it) -- the picker view
+    /// itself is unchanged from broadcastPickerView below and keeps its exact working
+    /// sizing fix from commit dec2a09.
+    private var dockedBroadcastPicker: some View {
+        ZStack {
+            Circle()
+                .fill(BhekaTheme.accentDim)
+                .frame(width: 84, height: 84)
+                .blur(radius: 14)
+            Circle()
+                .fill(Color.white.opacity(0.16))
+                .frame(width: 64, height: 64)
+                .allowsHitTesting(false)
+            Circle()
+                .stroke(BhekaTheme.accent, lineWidth: 2)
+                .frame(width: 64, height: 64)
+                .shadow(color: BhekaTheme.accent.opacity(0.9), radius: 12)
+                // ROOT CAUSE FIX (preserved from the original implementation): this ring
+                // used to be an ordinary sibling in the ZStack with no hit-testing
+                // opinion of its own. That is *not* what was swallowing the tap
+                // (SwiftUI ZStack hit-tests top-most-drawn view first, and the picker is
+                // drawn after/above this ring), but we explicitly disable hit-testing on
+                // it anyway so it can never be implicated again and so the picker is
+                // unambiguously the only interactive element in this stack.
+                .allowsHitTesting(false)
+            broadcastPickerView
+                .frame(width: 56, height: 56)
+        }
+        .onAppear {
+            viewModel.saveConfig()
+        }
+    }
+
+    /// Builds the actual `BroadcastPickerView`. Split out from `dockedBroadcastPicker`
     /// so the `#if DEBUG` branch can wrap two complete, independently valid
     /// initializer calls rather than a bare trailing-argument fragment -- splitting a
     /// single call's argument list across a `#if`/`#endif` (as an earlier version of
@@ -76,92 +264,108 @@ struct ContentView: View {
 #endif
     }
 
-    private var broadcastPickerOverlay: some View {
-        VStack(spacing: 10) {
-            Text("Tap the blue button below to choose \"Bheka Monitoring\" and start background monitoring.")
-                .font(.footnote)
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-            ZStack {
-                Circle()
-                    .fill(Color.blue)
-                    .frame(width: 64, height: 64)
-                    // ROOT CAUSE FIX: this Circle used to be an ordinary sibling in the
-                    // ZStack with no hit-testing opinion of its own. That is *not* what
-                    // was swallowing the tap (SwiftUI ZStack hit-tests top-most-drawn
-                    // view first, and the picker is drawn after/above the circle), but
-                    // we explicitly disable hit-testing on it anyway so it can never be
-                    // implicated again and so the picker is unambiguously the only
-                    // interactive element in this stack.
-                    .allowsHitTesting(false)
-                broadcastPickerView
-                    .frame(width: 56, height: 56)
-            }
+    /// Polished instructional callout shown above the action bar once "Start
+    /// Monitoring" has been tapped, replacing the previous ad-hoc floating banner with
+    /// a small pill that matches the rest of the glass/green visual language.
+    private var instructionalCallout: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "hand.tap.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(BhekaTheme.accent)
+            Text("Tap the glowing button below and choose \u{201C}Bheka Monitoring\u{201D} to start background monitoring.")
+                .font(.system(.footnote, design: .rounded).weight(.medium))
+                .foregroundColor(BhekaTheme.textPrimary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 20)
-        .frame(maxWidth: .infinity)
-        .background(Color.black.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 16)
-        .padding(.bottom, 24)
+        .padding(.vertical, 10)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.black.opacity(0.35))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(BhekaTheme.accentDim, lineWidth: 1)
+        )
+        .padding(.horizontal, 20)
 #if DEBUG
         .overlay(alignment: .top) {
             Text("Picker frame touches: \(viewModel.pickerTouchProbeCount)")
                 .font(.caption2.monospacedDigit())
-                .foregroundColor(.yellow)
-                .padding(.top, -18)
+                .foregroundColor(BhekaTheme.accent)
+                .padding(.top, -16)
         }
 #endif
-        .onAppear {
-            viewModel.saveConfig()
-        }
     }
 
-    // MARK: - Sections
+    // MARK: - Status card
 
-    private var statusSection: some View {
-        Section("Status") {
-            HStack {
-                Circle()
-                    .fill(viewModel.isMonitoringActive ? Color.green : Color.gray)
-                    .frame(width: 12, height: 12)
-                Text(viewModel.isMonitoringActive ? "Monitoring active" : "Monitoring inactive")
-                    .font(.headline)
+    private var statusCard: some View {
+        GlassCard {
+            GlassSectionLabel(title: "Status")
+
+            HStack(spacing: 14) {
+                StatusRing(isActive: viewModel.isMonitoringActive, diameter: 34)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(viewModel.isMonitoringActive ? "Monitoring Active" : "Monitoring Inactive")
+                        .font(.system(.headline, design: .rounded).weight(.bold))
+                        .foregroundColor(BhekaTheme.textPrimary)
+                    if let lastScreenshot = viewModel.lastScreenshotAt {
+                        Text("Last frame: \(lastScreenshot.formatted(date: .abbreviated, time: .standard))")
+                            .font(.caption)
+                            .foregroundColor(BhekaTheme.textSecondary)
+                    } else {
+                        Text("No frame captured yet")
+                            .font(.caption)
+                            .foregroundColor(BhekaTheme.textTertiary)
+                    }
+                }
+                Spacer()
             }
-            if let lastScreenshot = viewModel.lastScreenshotAt {
-                Text("Last frame captured on device: \(lastScreenshot.formatted(date: .abbreviated, time: .standard))")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+
+            GlassHairline()
 
             // This is the truthful signal: it only updates when the server actually
             // returned a 2xx for an uploaded event. "Captured on device" above can look
             // fine even when every single upload is silently failing (wrong network,
-            // Tailscale not connected, bad token, etc.) — this line cannot lie the same way.
-            HStack {
-                Circle()
-                    .fill(viewModel.lastUploadOkAt != nil && viewModel.lastUploadError == nil ? Color.green : (viewModel.lastUploadError != nil ? Color.red : Color.gray))
-                    .frame(width: 8, height: 8)
-                if let error = viewModel.lastUploadError {
-                    Text("Upload failing: \(error)")
-                        .font(.footnote)
-                        .foregroundColor(.red)
-                } else if let okAt = viewModel.lastUploadOkAt {
-                    Text("Last confirmed server upload: \(okAt.formatted(date: .abbreviated, time: .standard))")
-                        .font(.footnote)
-                        .foregroundColor(.green)
-                } else {
-                    Text("No confirmed server upload yet")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
+            // Tailscale not connected, bad token, etc.) -- this line cannot lie the
+            // same way.
+            HStack(spacing: 10) {
+                StatusDot(state: uploadDotState)
+                Group {
+                    if let error = viewModel.lastUploadError {
+                        Text("Upload failing: \(error)")
+                            .foregroundColor(BhekaTheme.danger)
+                    } else if let okAt = viewModel.lastUploadOkAt {
+                        Text("Last confirmed upload: \(okAt.formatted(date: .abbreviated, time: .standard))")
+                            .foregroundColor(BhekaTheme.textSecondary)
+                    } else {
+                        Text("No confirmed server upload yet")
+                            .foregroundColor(BhekaTheme.textTertiary)
+                    }
                 }
+                .font(.system(.footnote, design: .rounded))
+                Spacer()
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
 
             if let error = viewModel.captureManager.lastError {
-                Text(error)
-                    .font(.footnote)
-                    .foregroundColor(.red)
+                GlassHairline()
+                HStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(BhekaTheme.danger)
+                        .font(.caption)
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundColor(BhekaTheme.danger)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
             }
 
             // Diagnostic-only: surfaces the Broadcast Extension's own heartbeat (see
@@ -170,123 +374,207 @@ struct ContentView: View {
             // ever launched at all, and if so exactly which pipeline stage it last
             // checked in from before going quiet -- there was previously no way to
             // distinguish "never launched", "launched then died quickly", and "still
-            // alive but stuck" from the host app's side.
+            // alive but stuck" from the host app's side. Display only -- the underlying
+            // heartbeat-writing logic in ExtensionConfigStore is unchanged.
             if let aliveAt = viewModel.extensionLastAliveAt, let stage = viewModel.extensionLastStage {
-                Text("Extension last checked in: \(aliveAt.formatted(date: .omitted, time: .standard)) (\(stage))")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                GlassHairline()
+                HStack(spacing: 10) {
+                    Image(systemName: "waveform.path.ecg")
+                        .foregroundColor(BhekaTheme.iconGrey)
+                        .font(.caption)
+                    Text("Extension last checked in: \(aliveAt.formatted(date: .omitted, time: .standard)) (\(stage))")
+                        .font(.caption2)
+                        .foregroundColor(BhekaTheme.textTertiary)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
             }
         }
     }
 
-    private var configSection: some View {
-        Section("Configuration") {
-            TextField("API URL", text: $viewModel.config.apiUrl)
-                .keyboardType(.URL)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            SecureField("Agent Token", text: $viewModel.config.agentToken)
-            TextField("Tenant Slug", text: $viewModel.config.tenantSlug)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            TextField("Site ID", text: $viewModel.config.siteId)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            TextField("Subject User ID", text: $viewModel.config.subjectUserId)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            TextField("Source Agent ID", text: $viewModel.config.sourceAgentId)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
+    private var uploadDotState: StatusDot.State {
+        if viewModel.lastUploadError != nil { return .bad }
+        if viewModel.lastUploadOkAt != nil { return .good }
+        return .neutral
+    }
+
+    // MARK: - Configuration card
+
+    private var configCard: some View {
+        GlassCard {
+            GlassSectionLabel(title: "Configuration")
+
+            // Grouped explicitly to stay comfortably under SwiftUI's per-block
+            // ViewBuilder child limit now that this card holds six input rows plus
+            // their hairline separators.
+            Group {
+                GlassTextRow(label: "API URL", text: $viewModel.config.apiUrl, keyboardType: .URL)
+                GlassHairline()
+                GlassSecureRow(label: "Agent Token", text: $viewModel.config.agentToken)
+                GlassHairline()
+                GlassTextRow(label: "Tenant Slug", text: $viewModel.config.tenantSlug)
+                GlassHairline()
+            }
+            Group {
+                GlassTextRow(label: "Site ID", text: $viewModel.config.siteId)
+                GlassHairline()
+                GlassTextRow(label: "Subject User ID", text: $viewModel.config.subjectUserId)
+                GlassHairline()
+                GlassTextRow(label: "Source Agent ID", text: $viewModel.config.sourceAgentId)
+            }
 
             if viewModel.isConfigFromMDM {
-                Label("Loaded from MDM Managed App Configuration", systemImage: "checkmark.shield")
-                    .font(.footnote)
-                    .foregroundColor(.blue)
-            }
-
-            Button {
-                viewModel.saveConfig()
-            } label: {
-                Text("Save Configuration")
-            }
-        }
-    }
-
-    private var actionsSection: some View {
-        Section("Actions") {
-            Button {
-                showingQRScanner = true
-            } label: {
-                Label("Scan QR Code", systemImage: "qrcode.viewfinder")
-            }
-
-            if viewModel.isMonitoringActive {
-                Button(role: .destructive) {
-                    viewModel.stopMonitoring()
-                } label: {
-                    Label("Stop Monitoring", systemImage: "stop.circle")
-                }
-            } else {
-                Button {
-                    viewModel.startMonitoringRequested = true
-                } label: {
-                    Label("Start Monitoring", systemImage: "record.circle")
-                }
-                .disabled(!viewModel.config.isComplete)
-            }
-
-            // The actual RPSystemBroadcastPickerView button is rendered as a floating
-            // overlay outside this Form -- see broadcastPickerOverlay / body. Embedding it
-            // directly in this Section silently ate all taps on-device (see the comment on
-            // broadcastPickerOverlay for the full explanation); this row only shows a hint
-            // once Start Monitoring has been tapped.
-            if viewModel.startMonitoringRequested {
-                Text("Look for the floating blue button at the bottom of the screen and tap it to continue.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-            }
-
-            if !viewModel.config.isComplete {
-                Text("Fill in all configuration fields (or scan a QR code) before starting monitoring.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-            }
-
-            Button {
-                viewModel.testConnection()
-            } label: {
-                Label("Test Server Connection", systemImage: "network")
-            }
-            if viewModel.isTestingConnection {
+                GlassHairline()
                 HStack(spacing: 8) {
-                    ProgressView()
-                    Text("Contacting \(viewModel.config.apiUrl)\u{2026}")
+                    Image(systemName: "checkmark.shield.fill")
+                        .foregroundColor(BhekaTheme.accent)
+                        .font(.caption)
+                    Text("Loaded from MDM Managed App Configuration")
                         .font(.footnote)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(BhekaTheme.textSecondary)
+                    Spacer()
                 }
-            } else if let result = viewModel.connectionTestResult {
-                Text(result.message)
-                    .font(.footnote)
-                    .foregroundColor(result.success ? .green : .red)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
             }
+
+            VStack {
+                Button {
+                    viewModel.saveConfig()
+                } label: {
+                    Text("Save Configuration")
+                }
+                .buttonStyle(GlassButtonStyle(tint: BhekaTheme.textPrimary))
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 14)
+            .padding(.bottom, 18)
         }
     }
 
-    private var aboutSection: some View {
-        Section("About") {
-            Text("This device is monitored by your organization using the Bheka agent, as permitted by your company's device management (MDM) policy. Screen content, extracted text (OCR), and app usage timing are periodically sent to your organization's Bheka server.")
-                .font(.footnote)
-                .foregroundColor(.secondary)
-            // CFBundleVersion is set to the short git SHA at build time (see build-ios.yml).
-            // Surfacing it here means a single screenshot can always prove exactly which
-            // build/commit is installed on a device -- this has repeatedly been the real
-            // cause of "the fix didn't work" reports that were actually just a stale binary
-            // that hadn't been reinstalled yet.
-            Text("Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown")")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+    // MARK: - Actions card
+
+    private var actionsCard: some View {
+        GlassCard {
+            GlassSectionLabel(title: "Actions")
+
+            VStack(spacing: 10) {
+                Button {
+                    showingQRScanner = true
+                } label: {
+                    Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                }
+                .buttonStyle(GlassButtonStyle(tint: BhekaTheme.textPrimary))
+
+                Button {
+                    viewModel.testConnection()
+                } label: {
+                    Label("Test Server Connection", systemImage: "network")
+                }
+                .buttonStyle(GlassButtonStyle(tint: BhekaTheme.textPrimary))
+
+                if viewModel.isTestingConnection {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .tint(BhekaTheme.accent)
+                        Text("Contacting \(viewModel.config.apiUrl)\u{2026}")
+                            .font(.footnote)
+                            .foregroundColor(BhekaTheme.textSecondary)
+                        Spacer()
+                    }
+                } else if let result = viewModel.connectionTestResult {
+                    HStack(spacing: 8) {
+                        StatusDot(state: result.success ? .good : .bad)
+                        Text(result.message)
+                            .font(.footnote)
+                            .foregroundColor(result.success ? BhekaTheme.textSecondary : BhekaTheme.danger)
+                        Spacer()
+                    }
+                }
+
+                if !viewModel.config.isComplete {
+                    Text("Fill in all configuration fields (or scan a QR code) before starting monitoring.")
+                        .font(.footnote)
+                        .foregroundColor(BhekaTheme.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
+    }
+
+    // MARK: - About card
+
+    private var aboutCard: some View {
+        GlassCard {
+            GlassSectionLabel(title: "About")
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("This device is monitored by your organization using the Bheka agent, as permitted by your company's device management (MDM) policy. Screen content, extracted text (OCR), and app usage timing are periodically sent to your organization's Bheka server.")
+                    .font(.footnote)
+                    .foregroundColor(BhekaTheme.textSecondary)
+                // CFBundleVersion is set to the short git SHA at build time (see
+                // build-ios.yml). Surfacing it here means a single screenshot can
+                // always prove exactly which build/commit is installed on a device --
+                // this has repeatedly been the real cause of "the fix didn't work"
+                // reports that were actually just a stale binary that hadn't been
+                // reinstalled yet.
+                Text("Build: \(Bundle.main.infoDictionary?[\"CFBundleVersion\"] as? String ?? \"unknown\")")
+                    .font(.caption2)
+                    .foregroundColor(BhekaTheme.textTertiary)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+    }
+}
+
+// MARK: - Configuration row building blocks
+
+/// Clean input row matching the reference image's separated-row configuration list:
+/// a small grey caption label above a plain-styled text field, with hairlines added
+/// between rows by the caller (GlassHairline). Purely presentational -- the binding
+/// passed in is the same `viewModel.config.*` binding used before this redesign.
+struct GlassTextRow: View {
+    let label: String
+    @Binding var text: String
+    var keyboardType: UIKeyboardType = .default
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.system(.caption2, design: .rounded).weight(.semibold))
+                .foregroundColor(BhekaTheme.textTertiary)
+            TextField("", text: $text)
+                .font(.system(.body, design: .rounded))
+                .foregroundColor(BhekaTheme.textPrimary)
+                .keyboardType(keyboardType)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+}
+
+/// Same row treatment as GlassTextRow but for the secret agent token field.
+struct GlassSecureRow: View {
+    let label: String
+    @Binding var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.system(.caption2, design: .rounded).weight(.semibold))
+                .foregroundColor(BhekaTheme.textTertiary)
+            SecureField("", text: $text)
+                .font(.system(.body, design: .rounded))
+                .foregroundColor(BhekaTheme.textPrimary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 }
 
@@ -300,6 +588,11 @@ enum BroadcastConstants {
 /// UIViewRepresentable wrapper around RPSystemBroadcastPickerView, since SwiftUI has no
 /// native equivalent. Presenting this view shows the system's "Start Broadcast" UI,
 /// which the user must tap to actually begin the extension-based capture session.
+///
+/// VISUAL REDESIGN NOTE: this type is UNCHANGED from before the redesign. Only its
+/// container/surroundings (dockedBroadcastPicker above) were restyled -- the picker's
+/// own construction, sizing, and tinting below are untouched so the working
+/// tap-registration fix from commit dec2a09 cannot regress.
 struct BroadcastPickerView: UIViewRepresentable {
     let preferredExtension: String
 #if DEBUG
