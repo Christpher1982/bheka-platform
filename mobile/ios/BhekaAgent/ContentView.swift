@@ -159,9 +159,14 @@ struct ContentView: View {
             if viewModel.startMonitoringRequested {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        BroadcastPickerView(preferredExtension: BroadcastConstants.extensionBundleId)
-                            .frame(width: 44, height: 44)
-                        Text("Tap the record button to choose \"Bheka Monitoring\" and start background monitoring.")
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 50, height: 50)
+                            BroadcastPickerView(preferredExtension: BroadcastConstants.extensionBundleId)
+                                .frame(width: 44, height: 44)
+                        }
+                        Text("Tap the blue record button to choose \"Bheka Monitoring\" and start background monitoring.")
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }
@@ -223,6 +228,14 @@ struct BroadcastPickerView: UIViewRepresentable {
         let picker = RPSystemBroadcastPickerView(frame: .zero)
         picker.preferredExtension = preferredExtension
         picker.showsMicrophoneButton = false
+        // Without an explicit tint, this control renders using the extension's icon
+        // asset (if any) and can end up nearly invisible on a dark background --
+        // exactly what happened in testing (the instructional text showed but the
+        // button next to it was practically impossible to see/tap). Force a bright,
+        // unmistakable tint so there's always something visible to tap regardless of
+        // whether the extension bundle has its own icon set up.
+        picker.tintColor = .white
+        picker.backgroundColor = .clear
         return picker
     }
 
