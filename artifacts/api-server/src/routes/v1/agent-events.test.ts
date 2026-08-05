@@ -110,6 +110,12 @@ skipIfNoAgentToken(
     });
 
     afterAll(async () => {
+      // Rows in evidence_images (added alongside the new evidence storage
+      // path — see lib/evidence-storage.ts) reference both activity_events
+      // and agents for this tenant's screenshot_capture events in the tests
+      // above, so they must be cleared before those parent rows can be
+      // deleted below.
+      await db.execute(sql`DELETE FROM evidence_images WHERE tenant_id = ${TENANT_ID}`);
       await db.execute(sql`DELETE FROM detections WHERE tenant_id = ${TENANT_ID}`);
       await db.execute(sql`DELETE FROM activity_events WHERE tenant_id = ${TENANT_ID}`);
       await db.execute(sql`DELETE FROM agents WHERE id = ${AGENT_ID}`);

@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
-import { ChevronLeft, ShieldAlert } from "lucide-react";
+import { ChevronLeft, ImageOff, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/app-shell";
 import { QueryState } from "@/components/states";
 import { SeverityBadge, StatusBadge } from "@/components/status-badge";
-import { getActivityEvent } from "@/api/resources";
+import { evidenceImageUrl, getActivityEvent } from "@/api/resources";
 import {
   formatDateTime,
   formatDurationSeconds,
@@ -138,20 +138,31 @@ export function ActivityDetailPage() {
                             : "—"}
                         </Field>
                       </dl>
-                      {event.metadata.screenshotImageBase64 ? (
+                      {event.metadata.evidenceImageId ? (
                         <div className="space-y-1">
                           <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                             Screenshot
                           </dt>
                           <dd>
                             <img
-                              src={`data:image/jpeg;base64,${event.metadata.screenshotImageBase64}`}
+                              src={evidenceImageUrl(event.metadata.evidenceImageId)}
                               alt="Captured screenshot"
                               className="max-w-2xl max-h-[32rem] rounded-md border object-contain"
                             />
+                            <Link
+                              href={`/evidence?imageId=${event.metadata.evidenceImageId}`}
+                              className="mt-1 inline-block text-xs text-muted-foreground hover:underline"
+                            >
+                              View in Evidence gallery
+                            </Link>
                           </dd>
                         </div>
-                      ) : null}
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <ImageOff className="size-3.5" />
+                          No stored image for this screenshot (storage write may have failed).
+                        </div>
+                      )}
                       <div className="space-y-1">
                         <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                           OCR Text

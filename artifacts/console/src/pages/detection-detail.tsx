@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
-import { ChevronLeft, ShieldAlert } from "lucide-react";
+import { ChevronLeft, Image, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/app-shell";
@@ -107,6 +107,15 @@ export function DetectionDetailPage() {
                       </pre>
                     </dd>
                   </div>
+                  {evidence.metadata.evidenceImageId ? (
+                    <Link
+                      href={`/evidence?imageId=${evidence.metadata.evidenceImageId}`}
+                      className="flex w-fit items-center gap-2 text-sm text-muted-foreground hover:underline"
+                    >
+                      <Image className="size-3.5" />
+                      A screenshot was captured for this event — view in Evidence
+                    </Link>
+                  ) : null}
                   <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <ShieldAlert className="size-3.5" />
                     Viewing this evidence is logged for audit purposes.

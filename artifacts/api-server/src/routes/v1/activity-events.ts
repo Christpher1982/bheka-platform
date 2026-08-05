@@ -111,6 +111,13 @@ router.get(
         isBrowser: e.metadata?.isBrowser ?? null,
         processName: e.metadata?.processName ?? null,
         hasDetection: linkedEventIds.has(e.id),
+        // Set only for screenshot_capture events whose image was
+        // successfully persisted to evidence_images (see agent-events.ts).
+        // The console's Activity list uses this to distinguish "has a
+        // viewable screenshot" from "screenshot event whose storage write
+        // failed" without a second query.
+        evidenceImageId: e.metadata?.evidenceImageId ?? null,
+        hasEvidenceImage: Boolean(e.metadata?.evidenceImageId),
       })),
       pageInfo: { nextCursor, hasMore },
     });

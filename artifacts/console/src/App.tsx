@@ -11,6 +11,7 @@ import { DetectionsPage } from "@/pages/detections";
 import { DetectionDetailPage } from "@/pages/detection-detail";
 import { ActivityPage } from "@/pages/activity";
 import { ActivityDetailPage } from "@/pages/activity-detail";
+import { EvidencePage } from "@/pages/evidence";
 import { SitesPage } from "@/pages/sites";
 import { UsersPage } from "@/pages/users";
 import { ApprovalsPage } from "@/pages/approvals";
@@ -26,6 +27,7 @@ function Routes() {
       <Route path="/detections/:id" component={DetectionDetailPage} />
       <Route path="/activity" component={ActivityPage} />
       <Route path="/activity/:id" component={ActivityDetailPage} />
+      <Route path="/evidence" component={EvidencePage} />
       <Route path="/sites" component={SitesPage} />
       <Route path="/users" component={UsersPage} />
       <Route path="/approvals" component={ApprovalsPage} />

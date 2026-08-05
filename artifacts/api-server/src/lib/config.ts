@@ -30,6 +30,18 @@ const ConfigSchema = z.object({
     .string()
     .min(32, "AGENT_INGEST_TOKEN must be at least 32 characters")
     .optional(),
+  // Filesystem root for evidence image storage (see lib/evidence-storage.ts).
+  // Defaults to a repo-local directory in dev; production deployments should
+  // point this at a persistent volume (or, once wired up, an S3/MinIO mount).
+  EVIDENCE_STORAGE_DIR: z.string().min(1).default("./data/evidence"),
+  // Root secret used to derive a per-tenant AES-256-GCM key (HKDF) for
+  // encrypting evidence images at rest. Stand-in for the Vault-issued
+  // per-tenant DEK scheme (lib/vault-client) until that service is deployed —
+  // see the comment in lib/evidence-storage.ts for the migration path.
+  EVIDENCE_MASTER_KEY: z
+    .string()
+    .min(32, "EVIDENCE_MASTER_KEY must be at least 32 characters")
+    .default("dev-only-insecure-evidence-master-key-do-not-use-in-prod"),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

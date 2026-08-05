@@ -69,7 +69,9 @@ export function ActivityPage() {
                         </TableCell>
                         <TableCell>
                           {event.eventType === "screenshot_capture" ? (
-                            <Badge variant="secondary">Screenshot</Badge>
+                            <Badge variant="secondary">
+                              {event.hasEvidenceImage ? "Screenshot" : "Screenshot (no image)"}
+                            </Badge>
                           ) : event.eventType === "app_usage_session" ? (
                             <div className="flex items-center gap-2">
                               <Badge variant="secondary">

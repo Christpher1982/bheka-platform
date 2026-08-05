@@ -6,6 +6,12 @@ out-tsc/
 .expo/
 .expo-shared/
 
+# ── Local evidence image storage (dev/test only) ──────────────────────────────
+# api-server writes encrypted screenshot blobs here at runtime (see
+# artifacts/api-server/src/lib/evidence-storage.ts, EVIDENCE_STORAGE_DIR).
+# Never commit captured screenshots or their ciphertext.
+artifacts/api-server/data/
+
 # ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
 

@@ -25,14 +25,29 @@ export interface ActivityEventMetadata {
   activeWindowTitle?: string;
   capturedText?: string;
   // screenshot_capture fields (see routes/v1/agent-events.ts). ocrText is
-  // local-Tesseract output (or null when OCR wasn't available on the
-  // agent's machine); screenshotImageBase64 is a JPEG data payload stored
-  // directly in this jsonb column as a PoC-stage stopgap — see the comment
-  // in agent-events.ts for why this isn't in object storage yet.
+  // local-Tesseract (or on-device OCR) output, or null when OCR wasn't
+  // available. screenshotImageBase64 is accepted on ingest (the wire
+  // contract every agent already speaks) but is never persisted here —
+  // agent-events.ts decodes it, writes it to encrypted-at-rest evidence
+  // storage (see lib/evidence-storage.ts on the api-server, and the
+  // evidence_images table), and stores only evidenceImageId below. Kept as
+  // an optional field on this type purely so the ingest route's Zod schema
+  // and this type can share one shape; a stored activity_events row's
+  // metadata will not actually contain this key.
   ocrText?: string | null;
   screenshotImageBase64?: string;
   screenshotWidth?: number;
   screenshotHeight?: number;
+  // Pointer to the evidence_images row holding the actual encrypted image
+  // bytes for this screenshot_capture event, once persisted by
+  // agent-events.ts. Absent if evidence storage write failed (see the
+  // catch block there) or for event types that never capture an image.
+  evidenceImageId?: string;
+  // Optional opaque session/broadcast identifier (see routes/v1/agent-events.ts).
+  // Not persisted in metadata (moved onto evidence_images.sessionId instead)
+  // but declared here so the shared Zod schema for the wire payload can
+  // reuse this type.
+  sessionId?: string;
   // app_usage_session fields (see routes/v1/agent-events.ts). Active
   // application / website usage tracking: a discrete usage session for one
   // (processName, windowTitle) pair, closed out when the foreground window

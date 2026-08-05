@@ -9,6 +9,7 @@ export * from "./activity.js";
 export * from "./cases.js";
 export * from "./detections.js";
 export * from "./evidence.js";
+export * from "./evidence-images.js";
 export * from "./transparency.js";
 export * from "./retention.js";
 export * from "./integrations.js";

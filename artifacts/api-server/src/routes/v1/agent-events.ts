@@ -31,11 +31,13 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, desc, eq, gte } from "drizzle-orm";
+import { uuidv7 } from "uuidv7";
 import {
   db,
   activityEventsTable,
   agentsTable,
   detectionsTable,
+  evidenceImagesTable,
   sitesTable,
   tenantsTable,
   usersTable,
@@ -44,6 +46,8 @@ import { withTenantContext } from "../../lib/tenant-context.js";
 import { sendProblem, Problems } from "../../lib/problem.js";
 import { requireAgentToken } from "../../middleware/require-agent-token.js";
 import { evaluateEvent, ruleConfig } from "../../rules/evaluate.js";
+import { writeEvidenceImage } from "../../lib/evidence-storage.js";
+import { logger } from "../../lib/logger.js";
 
 const router: IRouter = Router();
 
@@ -73,6 +77,12 @@ const EventMetadata = z
       .optional(),
     screenshotWidth: z.number().int().positive().optional(),
     screenshotHeight: z.number().int().positive().optional(),
+    // Opaque session/broadcast identifier, reported by agents that have one
+    // (iOS RPBroadcastSampleHandler lifetime, Android MediaProjection
+    // session). Optional and additive — Windows and older agent builds omit
+    // it. Used only to group evidence_images for display; never required for
+    // ingest to succeed.
+    sessionId: z.string().max(200).optional(),
     // app_usage_session fields — active application / website usage
     // tracking. windowTitle is the raw foreground window title only (a
     // best-effort "website usage" signal, not real per-URL tracking).
@@ -229,11 +239,59 @@ router.post(
 
       if (!site || !subject || !agent?.active) return null;
 
-      // TEMPORARY: screenshot_capture events store the base64 JPEG directly
-      // in this jsonb column, same as every other event's metadata. This is
-      // an accepted PoC-stage stopgap, not the final design — Vault-backed
-      // evidence/object storage for screenshots is a separate, already
-      // tracked roadmap item, not something this change attempts to solve.
+      // screenshot_capture's screenshotImageBase64 no longer lands in this
+      // jsonb column (see lib/evidence-storage.ts and evidence-images.ts for
+      // the read/write path this replaces the old inline-base64 stopgap
+      // with). We persist the decoded bytes to encrypted-at-rest evidence
+      // storage first, then store only a pointer (evidenceImageId) plus the
+      // display fields (dimensions, ocrText) in metadata — the same fields
+      // the console already reads, minus the heavy base64 payload.
+      let storedMetadata = metadata;
+      let evidenceImageId: string | null = null;
+      if (eventType === "screenshot_capture" && metadata.screenshotImageBase64) {
+        const { screenshotImageBase64, sessionId, ...rest } = metadata;
+        try {
+          const plaintext = Buffer.from(screenshotImageBase64, "base64");
+          evidenceImageId = uuidv7();
+          const stored = await writeEvidenceImage({
+            tenantId,
+            id: evidenceImageId,
+            occurredAt,
+            plaintext,
+          });
+          await tx.insert(evidenceImagesTable).values({
+            id: evidenceImageId,
+            tenantId,
+            siteId,
+            subjectUserId,
+            sourceAgentId,
+            sessionId: sessionId ?? null,
+            contentType: "image/jpeg",
+            width: metadata.screenshotWidth ?? null,
+            height: metadata.screenshotHeight ?? null,
+            ocrText: metadata.ocrText ?? null,
+            storageKey: stored.storageKey,
+            ivBase64: stored.ivBase64,
+            authTagBase64: stored.authTagBase64,
+            keyVersion: stored.keyVersion,
+            contentHashSha256: stored.contentHashSha256,
+            byteSize: stored.byteSize,
+            occurredAt,
+          });
+          storedMetadata = { ...rest, evidenceImageId };
+        } catch (err) {
+          // Evidence storage failure must not silently drop the screenshot's
+          // OCR text / metadata — but it also must not pretend the image was
+          // stored. Log and fall through to storing metadata without the
+          // image pointer; the base64 itself is discarded either way (never
+          // re-persisted into the jsonb column, to avoid resurrecting the
+          // stopgap this change removes).
+          logger.error({ err }, "Failed to write evidence image — storing event without image");
+          const { screenshotImageBase64: _dropped, sessionId: _sid, ...rest } = metadata;
+          storedMetadata = rest;
+        }
+      }
+
       const [event] = await tx
         .insert(activityEventsTable)
         .values({
@@ -243,9 +301,19 @@ router.post(
           sourceAgentId,
           eventType,
           occurredAt,
-          metadata,
+          metadata: storedMetadata,
         })
         .returning({ id: activityEventsTable.id });
+
+      // Backfill the evidence_images row's sourceEventId now that the
+      // activity_events row exists (evidence_images is written first so its
+      // id is available to embed in activity_events.metadata above).
+      if (evidenceImageId) {
+        await tx
+          .update(evidenceImagesTable)
+          .set({ sourceEventId: event!.id })
+          .where(eq(evidenceImagesTable.id, evidenceImageId));
+      }
 
       const match = evaluateEvent({ eventType, occurredAt, metadata });
       if (!match) return { eventId: event!.id, detectionId: null };

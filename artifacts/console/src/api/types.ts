@@ -14,6 +14,7 @@ import type {
   Case,
   CaseParticipant,
   Detection,
+  EvidenceImage,
   Role,
   RoleAssignment,
   Site,
@@ -111,6 +112,11 @@ export type ActivityEventDto = Pick<
   isBrowser: boolean | null;
   processName: string | null;
   hasDetection: boolean;
+  // Non-null only for screenshot_capture events with a successfully stored
+  // image (see evidence_images / agent-events.ts). hasEvidenceImage is a
+  // convenience boolean derived from the same field.
+  evidenceImageId: string | null;
+  hasEvidenceImage: boolean;
 };
 
 // GET /v1/activity-events/:eventId full detail, including capturedText.
@@ -192,6 +198,29 @@ export interface SessionDto {
   familyName: string | null;
   roles: Role["name"][];
 }
+
+// GET /v1/evidence-images list item and GET /v1/evidence-images/:id detail
+// share the same shape — neither includes the storage-layer fields
+// (storageKey/ivBase64/authTagBase64/contentHashSha256): those never need to
+// leave the api-server. Image bytes are fetched separately via
+// GET /v1/evidence-images/:id/image (see evidenceImageUrl in resources.ts).
+export type EvidenceImageDto = Pick<
+  Jsonified<EvidenceImage>,
+  | "id"
+  | "tenantId"
+  | "siteId"
+  | "subjectUserId"
+  | "sourceAgentId"
+  | "sourceEventId"
+  | "sessionId"
+  | "contentType"
+  | "width"
+  | "height"
+  | "ocrText"
+  | "byteSize"
+  | "occurredAt"
+  | "createdAt"
+>;
 
 export type CaseStatus = Case["status"];
 export type DetectionStatus = Detection["status"];

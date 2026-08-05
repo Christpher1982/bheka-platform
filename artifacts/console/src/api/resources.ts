@@ -12,6 +12,7 @@ import type {
   CaseStatus,
   DetectionDto,
   DetectionEvidenceDto,
+  EvidenceImageDto,
   Paginated,
   RoleAssignmentDto,
   RoleDto,
@@ -105,6 +106,26 @@ export function getActivityEvent(
   eventId: string,
 ): Promise<ActivityEventDetailDto> {
   return apiFetch(`/v1/activity-events/${eventId}`);
+}
+
+// ── evidence images ─────────────────────────────────────────────────────────
+
+export function listEvidenceImages(
+  query: PageQuery & { siteId?: string; subjectUserId?: string; sourceAgentId?: string },
+): Promise<Paginated<EvidenceImageDto>> {
+  return apiFetch("/v1/evidence-images", { params: { ...query } });
+}
+
+export function getEvidenceImage(id: string): Promise<EvidenceImageDto> {
+  return apiFetch(`/v1/evidence-images/${id}`);
+}
+
+// Image bytes are not fetched through apiFetch (they are not JSON) — the
+// console points <img src> directly at this same-origin URL, so the
+// bheka_sid session cookie rides along automatically. See vite.config.ts's
+// /api proxy: this resolves the same way every other /api request does.
+export function evidenceImageUrl(id: string): string {
+  return `/api/v1/evidence-images/${id}/image`;
 }
 
 // ── sites ───────────────────────────────────────────────────────────────────
