@@ -6,6 +6,18 @@
 	     "com.apple.broadcast-services-upload" extension point, backed by SampleHandler,
 	     and that it participates in the system's live broadcast (not just recording). -->
 
+	<key>CFBundleIdentifier</key>
+	<string>io.bheka.agent.BhekaBroadcastExtension</string>
+
+	<key>CFBundleExecutable</key>
+	<string>BhekaBroadcastExtension</string>
+
+	<key>CFBundleName</key>
+	<string>BhekaBroadcastExtension</string>
+
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
+
 	<key>CFBundleDisplayName</key>
 	<string>Bheka Monitoring</string>
 
