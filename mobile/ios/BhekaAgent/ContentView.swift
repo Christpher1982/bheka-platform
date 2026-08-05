@@ -521,7 +521,7 @@ struct ContentView: View {
                 // this has repeatedly been the real cause of "the fix didn't work"
                 // reports that were actually just a stale binary that hadn't been
                 // reinstalled yet.
-                Text("Build: \(Bundle.main.infoDictionary?[\"CFBundleVersion\"] as? String ?? \"unknown\")")
+                Text("Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown")")
                     .font(.caption2)
                     .foregroundColor(BhekaTheme.textTertiary)
             }
