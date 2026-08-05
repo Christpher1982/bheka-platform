@@ -56,6 +56,26 @@ struct ContentView: View {
         }
     }
 
+    /// Builds the actual `BroadcastPickerView`. Split out from `broadcastPickerOverlay`
+    /// so the `#if DEBUG` branch can wrap two complete, independently valid
+    /// initializer calls rather than a bare trailing-argument fragment -- splitting a
+    /// single call's argument list across a `#if`/`#endif` (as an earlier version of
+    /// this file did) does not parse: Swift's conditional compilation directives must
+    /// wrap whole statements/declarations, not a mid-argument-list comma continuation,
+    /// and doing so is a straight compiler error ("expected ')' in expression list").
+    private var broadcastPickerView: some View {
+#if DEBUG
+        return BroadcastPickerView(
+            preferredExtension: BroadcastConstants.extensionBundleId,
+            onTouchDetected: { viewModel.pickerTouchProbeCount += 1 }
+        )
+#else
+        return BroadcastPickerView(
+            preferredExtension: BroadcastConstants.extensionBundleId
+        )
+#endif
+    }
+
     private var broadcastPickerOverlay: some View {
         VStack(spacing: 10) {
             Text("Tap the blue button below to choose \"Bheka Monitoring\" and start background monitoring.")
@@ -75,13 +95,8 @@ struct ContentView: View {
                     // implicated again and so the picker is unambiguously the only
                     // interactive element in this stack.
                     .allowsHitTesting(false)
-                BroadcastPickerView(
-                    preferredExtension: BroadcastConstants.extensionBundleId
-#if DEBUG
-                    , onTouchDetected: { viewModel.pickerTouchProbeCount += 1 }
-#endif
-                )
-                .frame(width: 56, height: 56)
+                broadcastPickerView
+                    .frame(width: 56, height: 56)
             }
         }
         .padding(.vertical, 20)
