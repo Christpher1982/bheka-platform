@@ -53,10 +53,34 @@ struct ContentView: View {
                     .font(.headline)
             }
             if let lastScreenshot = viewModel.lastScreenshotAt {
-                Text("Last screenshot: \(lastScreenshot.formatted(date: .abbreviated, time: .standard))")
+                Text("Last frame captured on device: \(lastScreenshot.formatted(date: .abbreviated, time: .standard))")
                     .font(.footnote)
                     .foregroundColor(.secondary)
             }
+
+            // This is the truthful signal: it only updates when the server actually
+            // returned a 2xx for an uploaded event. "Captured on device" above can look
+            // fine even when every single upload is silently failing (wrong network,
+            // Tailscale not connected, bad token, etc.) — this line cannot lie the same way.
+            HStack {
+                Circle()
+                    .fill(viewModel.lastUploadOkAt != nil && viewModel.lastUploadError == nil ? Color.green : (viewModel.lastUploadError != nil ? Color.red : Color.gray))
+                    .frame(width: 8, height: 8)
+                if let error = viewModel.lastUploadError {
+                    Text("Upload failing: \(error)")
+                        .font(.footnote)
+                        .foregroundColor(.red)
+                } else if let okAt = viewModel.lastUploadOkAt {
+                    Text("Last confirmed server upload: \(okAt.formatted(date: .abbreviated, time: .standard))")
+                        .font(.footnote)
+                        .foregroundColor(.green)
+                } else {
+                    Text("No confirmed server upload yet")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+            }
+
             if let error = viewModel.captureManager.lastError {
                 Text(error)
                     .font(.footnote)
@@ -152,6 +176,24 @@ struct ContentView: View {
                     .font(.footnote)
                     .foregroundColor(.secondary)
             }
+
+            Button {
+                viewModel.testConnection()
+            } label: {
+                Label("Test Server Connection", systemImage: "network")
+            }
+            if viewModel.isTestingConnection {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Contacting \(viewModel.config.apiUrl)\u{2026}")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+            } else if let result = viewModel.connectionTestResult {
+                Text(result.message)
+                    .font(.footnote)
+                    .foregroundColor(result.success ? .green : .red)
+            }
         }
     }
 
@@ -195,6 +237,10 @@ final class EnrollmentViewModel: ObservableObject {
     @Published var isMonitoringActive = false
     @Published var lastScreenshotAt: Date?
     @Published var startMonitoringRequested = false
+    @Published var lastUploadOkAt: Date?
+    @Published var lastUploadError: String?
+    @Published var isTestingConnection = false
+    @Published var connectionTestResult: (success: Bool, message: String)?
 
     let captureManager = ScreenCaptureManager()
     private let appUsageTracker = AppUsageTracker.shared
@@ -205,9 +251,26 @@ final class EnrollmentViewModel: ObservableObject {
         config = ConfigStore.load()
         isMonitoringActive = ConfigStore.isMonitoringActive()
         lastScreenshotAt = ConfigStore.lastScreenshotAt()
+        lastUploadOkAt = ConfigStore.lastUploadOkAt()
+        lastUploadError = ConfigStore.lastUploadError()
         appUsageTracker.start()
         refreshMDMFlag()
         startStatusPolling()
+    }
+
+    func testConnection() {
+        isTestingConnection = true
+        connectionTestResult = nil
+        ApiClient.shared.testConnection(apiUrl: config.apiUrl) { [weak self] result in
+            guard let self else { return }
+            self.isTestingConnection = false
+            switch result {
+            case .success(let message):
+                self.connectionTestResult = (true, message)
+            case .failure(let message):
+                self.connectionTestResult = (false, message)
+            }
+        }
     }
 
     /// The actual capture engine — either the in-app RPScreenRecorder path
@@ -223,6 +286,8 @@ final class EnrollmentViewModel: ObservableObject {
                 guard let self else { return }
                 self.isMonitoringActive = ConfigStore.isMonitoringActive()
                 self.lastScreenshotAt = ConfigStore.lastScreenshotAt()
+                self.lastUploadOkAt = ConfigStore.lastUploadOkAt()
+                self.lastUploadError = ConfigStore.lastUploadError()
             }
         }
     }

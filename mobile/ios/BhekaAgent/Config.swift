@@ -69,6 +69,8 @@ enum ConfigStore {
         static let sourceAgentId = "BHEKA_SOURCE_AGENT_ID"
         static let monitoringActive = "BHEKA_MONITORING_ACTIVE"
         static let lastScreenshotAt = "BHEKA_LAST_SCREENSHOT_AT"
+        static let lastUploadOkAt = "BHEKA_LAST_UPLOAD_OK_AT"
+        static let lastUploadError = "BHEKA_LAST_UPLOAD_ERROR"
     }
 
     // MARK: - Hard-coded fallback defaults
@@ -202,5 +204,31 @@ enum ConfigStore {
     static func lastScreenshotAt() -> Date? {
         let value = shared.double(forKey: Key.lastScreenshotAt)
         return value > 0 ? Date(timeIntervalSince1970: value) : nil
+    }
+
+    // MARK: - Upload delivery confirmation
+    //
+    // `lastScreenshotAt` above only means a frame was captured on-device and handed to
+    // the network layer — it says nothing about whether the server actually received it.
+    // These two track the real outcome of the most recent POST to /api/v1/agent/events,
+    // so the UI can show a truthful "is this actually reaching the server" signal instead
+    // of implying success just because a local frame was processed.
+
+    static func setLastUploadOk(_ date: Date) {
+        shared.set(date.timeIntervalSince1970, forKey: Key.lastUploadOkAt)
+        shared.removeObject(forKey: Key.lastUploadError)
+    }
+
+    static func setLastUploadError(_ message: String) {
+        shared.set(message, forKey: Key.lastUploadError)
+    }
+
+    static func lastUploadOkAt() -> Date? {
+        let value = shared.double(forKey: Key.lastUploadOkAt)
+        return value > 0 ? Date(timeIntervalSince1970: value) : nil
+    }
+
+    static func lastUploadError() -> String? {
+        shared.string(forKey: Key.lastUploadError)
     }
 }

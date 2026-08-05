@@ -112,6 +112,41 @@ final class ApiClient: NSObject {
         super.init()
     }
 
+    // MARK: - Connectivity test
+
+    /// Hits the API's unauthenticated health endpoint directly (foreground session, so
+    /// the result comes back synchronously enough for a UI button) to answer the one
+    /// question that matters when uploads seem to be going nowhere: can this phone even
+    /// reach the server at all. This is independent of agent token / tenant config.
+    func testConnection(apiUrl: String, completion: @escaping (Result<String, String>) -> Void) {
+        guard let url = URL(string: "\(apiUrl)/api/v1/healthz") else {
+            completion(.failure("Invalid API URL: \(apiUrl)"))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 8
+
+        foregroundSession.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error {
+                    completion(.failure("No response from server: \(error.localizedDescription). Check the phone can reach \(apiUrl) (e.g. Tailscale connected, on the right network)."))
+                    return
+                }
+                guard let http = response as? HTTPURLResponse else {
+                    completion(.failure("No HTTP response received."))
+                    return
+                }
+                let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                if (200...299).contains(http.statusCode) {
+                    completion(.success("Server reachable (HTTP \(http.statusCode)). \(body)"))
+                } else {
+                    completion(.failure("Server responded with HTTP \(http.statusCode). \(body)"))
+                }
+            }
+        }.resume()
+    }
+
     // MARK: - Public posting API
 
     func postScreenshot(_ metadata: ScreenshotMetadata, occurredAt: Date = Date(), config: BhekaConfig) {
@@ -213,10 +248,20 @@ extension ApiClient: URLSessionDelegate, URLSessionTaskDelegate {
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        // Record the REAL outcome of every event upload into the shared App Group store,
+        // so the UI's "last upload" status reflects actual server delivery rather than
+        // just "we handed a frame to the network stack and hoped".
         if let error {
+            let message = "Upload failed: \(error.localizedDescription)"
             print("[ApiClient] Upload task '\(task.taskDescription ?? "?")' failed: \(error.localizedDescription)")
+            ConfigStore.setLastUploadError(message)
         } else if let http = task.response as? HTTPURLResponse {
             print("[ApiClient] Upload task '\(task.taskDescription ?? "?")' finished with status \(http.statusCode).")
+            if (200...299).contains(http.statusCode) {
+                ConfigStore.setLastUploadOk(Date())
+            } else {
+                ConfigStore.setLastUploadError("Server rejected upload (HTTP \(http.statusCode)) for '\(task.taskDescription ?? "event")'.")
+            }
         }
         // Clean up the temp file used as the upload body source, if it still exists.
         if let originalRequest = task.originalRequest, let bodyURL = originalRequest.url {

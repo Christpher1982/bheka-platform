@@ -35,6 +35,8 @@ enum ExtensionConfigStore {
         static let sourceAgentId = "BHEKA_SOURCE_AGENT_ID"
         static let monitoringActive = "BHEKA_MONITORING_ACTIVE"
         static let lastScreenshotAt = "BHEKA_LAST_SCREENSHOT_AT"
+        static let lastUploadOkAt = "BHEKA_LAST_UPLOAD_OK_AT"
+        static let lastUploadError = "BHEKA_LAST_UPLOAD_ERROR"
     }
 
     struct Config {
@@ -69,6 +71,16 @@ enum ExtensionConfigStore {
 
     static func setLastScreenshotAt(_ date: Date) {
         UserDefaults(suiteName: appGroupId)?.set(date.timeIntervalSince1970, forKey: Key.lastScreenshotAt)
+    }
+
+    static func setLastUploadOk(_ date: Date) {
+        let defaults = UserDefaults(suiteName: appGroupId)
+        defaults?.set(date.timeIntervalSince1970, forKey: Key.lastUploadOkAt)
+        defaults?.removeObject(forKey: Key.lastUploadError)
+    }
+
+    static func setLastUploadError(_ message: String) {
+        UserDefaults(suiteName: appGroupId)?.set(message, forKey: Key.lastUploadError)
     }
 }
 
@@ -203,8 +215,14 @@ final class ExtensionApiClient {
         let task = session.dataTask(with: request) { _, response, error in
             if let error {
                 print("[ExtensionApiClient] POST \(eventType) failed: \(error.localizedDescription)")
+                ExtensionConfigStore.setLastUploadError("Upload failed: \(error.localizedDescription)")
             } else if let http = response as? HTTPURLResponse {
                 print("[ExtensionApiClient] POST \(eventType) -> \(http.statusCode)")
+                if (200...299).contains(http.statusCode) {
+                    ExtensionConfigStore.setLastUploadOk(Date())
+                } else {
+                    ExtensionConfigStore.setLastUploadError("Server rejected upload (HTTP \(http.statusCode)) for '\(eventType)'.")
+                }
             }
             semaphore.signal()
         }
