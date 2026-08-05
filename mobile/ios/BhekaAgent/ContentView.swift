@@ -169,6 +169,18 @@ struct BroadcastPickerView: UIViewRepresentable {
         let picker = RPSystemBroadcastPickerView(frame: .zero)
         picker.preferredExtension = preferredExtension
         picker.showsMicrophoneButton = false
+        // RPSystemBroadcastPickerView only reveals its "Start Broadcast" system UI when
+        // its internal UIButton receives a genuine touchUpInside action. SwiftUI has no
+        // way to route a real tap to a 1x1 hidden UIKit view, so we simulate the control
+        // event directly once the button subview has been laid out. A short delay avoids
+        // racing the view's own internal setup.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            for subview in picker.subviews {
+                if let button = subview as? UIButton {
+                    button.sendActions(for: .touchUpInside)
+                }
+            }
+        }
         return picker
     }
 
@@ -187,12 +199,32 @@ final class EnrollmentViewModel: ObservableObject {
     let captureManager = ScreenCaptureManager()
     private let appUsageTracker = AppUsageTracker.shared
 
+    private var statusRefreshTimer: Timer?
+
     func loadConfig() {
         config = ConfigStore.load()
         isMonitoringActive = ConfigStore.isMonitoringActive()
         lastScreenshotAt = ConfigStore.lastScreenshotAt()
         appUsageTracker.start()
         refreshMDMFlag()
+        startStatusPolling()
+    }
+
+    /// The actual capture engine — either the in-app RPScreenRecorder path
+    /// (ScreenCaptureManager) or the BhekaBroadcastExtension — writes
+    /// `BHEKA_MONITORING_ACTIVE` into the shared App Group defaults from a different
+    /// process/thread than this view model. SwiftUI has no way to observe that shared
+    /// storage directly, so we poll it on a short timer while the app is active and
+    /// mirror it into the `@Published` property the UI actually reads.
+    private func startStatusPolling() {
+        statusRefreshTimer?.invalidate()
+        statusRefreshTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isMonitoringActive = ConfigStore.isMonitoringActive()
+                self.lastScreenshotAt = ConfigStore.lastScreenshotAt()
+            }
+        }
     }
 
     func saveConfig() {
