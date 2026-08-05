@@ -261,14 +261,14 @@ final class EnrollmentViewModel: ObservableObject {
     func testConnection() {
         isTestingConnection = true
         connectionTestResult = nil
-        ApiClient.shared.testConnection(apiUrl: config.apiUrl) { [weak self] result in
+        ApiClient.shared.testConnection(apiUrl: config.apiUrl) { [weak self] (result: Result<String, ConnectionTestError>) in
             guard let self else { return }
             self.isTestingConnection = false
             switch result {
             case .success(let message):
                 self.connectionTestResult = (true, message)
-            case .failure(let message):
-                self.connectionTestResult = (false, message)
+            case .failure(let error):
+                self.connectionTestResult = (false, error.message)
             }
         }
     }

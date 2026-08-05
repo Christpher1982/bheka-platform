@@ -9,6 +9,14 @@
 import Foundation
 import UIKit
 
+/// Simple string-backed error so `testConnection`'s Result can carry a human-readable
+/// message without pulling in NSError or a LocalizedError conformance boilerplate.
+struct ConnectionTestError: Error, CustomStringConvertible {
+    let message: String
+    init(_ message: String) { self.message = message }
+    var description: String { message }
+}
+
 /// The three event types the Bheka API accepts. Identical contract across Android/iOS agents.
 enum BhekaEventType: String, Codable {
     case keystrokeBatch = "keystroke_batch"       // Not used by the iOS agent (see README).
@@ -118,9 +126,9 @@ final class ApiClient: NSObject {
     /// the result comes back synchronously enough for a UI button) to answer the one
     /// question that matters when uploads seem to be going nowhere: can this phone even
     /// reach the server at all. This is independent of agent token / tenant config.
-    func testConnection(apiUrl: String, completion: @escaping (Result<String, String>) -> Void) {
+    func testConnection(apiUrl: String, completion: @escaping (Result<String, ConnectionTestError>) -> Void) {
         guard let url = URL(string: "\(apiUrl)/api/v1/healthz") else {
-            completion(.failure("Invalid API URL: \(apiUrl)"))
+            completion(.failure(ConnectionTestError("Invalid API URL: \(apiUrl)")))
             return
         }
         var request = URLRequest(url: url)
@@ -130,18 +138,18 @@ final class ApiClient: NSObject {
         foregroundSession.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error {
-                    completion(.failure("No response from server: \(error.localizedDescription). Check the phone can reach \(apiUrl) (e.g. Tailscale connected, on the right network)."))
+                    completion(.failure(ConnectionTestError("No response from server: \(error.localizedDescription). Check the phone can reach \(apiUrl) (e.g. Tailscale connected, on the right network).")))
                     return
                 }
                 guard let http = response as? HTTPURLResponse else {
-                    completion(.failure("No HTTP response received."))
+                    completion(.failure(ConnectionTestError("No HTTP response received.")))
                     return
                 }
                 let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
                 if (200...299).contains(http.statusCode) {
                     completion(.success("Server reachable (HTTP \(http.statusCode)). \(body)"))
                 } else {
-                    completion(.failure("Server responded with HTTP \(http.statusCode). \(body)"))
+                    completion(.failure(ConnectionTestError("Server responded with HTTP \(http.statusCode). \(body)")))
                 }
             }
         }.resume()
