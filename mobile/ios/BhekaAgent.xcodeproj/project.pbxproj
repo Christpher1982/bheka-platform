@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		5D9B9FC4B6A44AF088302C72 /* BhekaAgentApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D2DF5C1007F4C8195DEB37C /* BhekaAgentApp.swift */; };
 		A5805689599B498197119009 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382A1BB4174041389F28A6E4 /* ContentView.swift */; };
+		7D027BDF46AB40EE9E64320D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1422D0A64448DCB03E1C5E /* Theme.swift */; };
 		348DFF48299F42F895CF0D3D /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93724B51E255493B8174F69C /* Config.swift */; };
 		CABDC0080A92483EA30A58A4 /* ApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AF7443727F42FB9C381A52 /* ApiClient.swift */; };
 		BAFFF5CF5B634E129797ECE0 /* ScreenCaptureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED6B34DDD494AEAB69C8B7D /* ScreenCaptureManager.swift */; };
@@ -69,6 +70,7 @@
 
 		7D2DF5C1007F4C8195DEB37C /* BhekaAgentApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BhekaAgentApp.swift; sourceTree = "<group>"; };
 		382A1BB4174041389F28A6E4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5E1422D0A64448DCB03E1C5E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		93724B51E255493B8174F69C /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		88AF7443727F42FB9C381A52 /* ApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiClient.swift; sourceTree = "<group>"; };
 		3ED6B34DDD494AEAB69C8B7D /* ScreenCaptureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureManager.swift; sourceTree = "<group>"; };
@@ -171,6 +173,7 @@
 			children = (
 				7D2DF5C1007F4C8195DEB37C /* BhekaAgentApp.swift */,
 				382A1BB4174041389F28A6E4 /* ContentView.swift */,
+				5E1422D0A64448DCB03E1C5E /* Theme.swift */,
 				93724B51E255493B8174F69C /* Config.swift */,
 				88AF7443727F42FB9C381A52 /* ApiClient.swift */,
 				3ED6B34DDD494AEAB69C8B7D /* ScreenCaptureManager.swift */,
@@ -317,6 +320,7 @@
 			files = (
 				5D9B9FC4B6A44AF088302C72 /* BhekaAgentApp.swift in Sources */,
 				A5805689599B498197119009 /* ContentView.swift in Sources */,
+				7D027BDF46AB40EE9E64320D /* Theme.swift in Sources */,
 				348DFF48299F42F895CF0D3D /* Config.swift in Sources */,
 				CABDC0080A92483EA30A58A4 /* ApiClient.swift in Sources */,
 				BAFFF5CF5B634E129797ECE0 /* ScreenCaptureManager.swift in Sources */,
