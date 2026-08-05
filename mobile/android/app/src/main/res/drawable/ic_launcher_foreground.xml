@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple monogram "B" foreground for the adaptive launcher icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M34,24 L34,84 L58,84 C70,84 78,76 78,65 C78,57 73,51 66,49 C72,47 76,41 76,34 C76,25 68,24 58,24 Z M46,34 L56,34 C61,34 64,36 64,40 C64,44 61,46 56,46 L46,46 Z M46,56 L58,56 C64,56 67,59 67,64 C67,69 64,72 58,72 L46,72 Z" />
+</vector>

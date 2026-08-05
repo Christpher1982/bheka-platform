@@ -1,0 +1,54 @@
+name: Build iOS Agent (Unsigned IPA)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'mobile/ios/**'
+    branches:
+      - feature/agent-ingest-rules
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build archive (unsigned)
+        working-directory: mobile/ios
+        run: |
+          xcodebuild archive \
+            -project BhekaAgent.xcodeproj \
+            -scheme BhekaAgent \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/BhekaAgent.xcarchive" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            | xcpretty || true
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -r "$RUNNER_TEMP/BhekaAgent.xcarchive/Products/Applications/BhekaAgent.app" \
+                "$RUNNER_TEMP/Payload/BhekaAgent.app"
+          cd "$RUNNER_TEMP"
+          zip -r BhekaAgent-unsigned.ipa Payload
+          echo "IPA size: $(du -sh BhekaAgent-unsigned.ipa)"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: BhekaAgent-unsigned-ipa
+          path: ${{ runner.temp }}/BhekaAgent-unsigned.ipa
+          retention-days: 7
