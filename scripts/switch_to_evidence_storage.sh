@@ -24,7 +24,7 @@ echo "== Fixing console proxy target to point at port 8081 =="
 sed -i "s|target: 'http://localhost:8080'|target: 'http://localhost:8081'|g" "$REPO_DIR/artifacts/console/vite.config.ts"
 
 echo "== Applying evidence_images table to the bheka database =="
-PGPASSWORD=bheka psql -h localhost -U bheka -d bheka <<'SQL'
+docker exec -i -e PGPASSWORD=bheka bheka-postgres psql -h localhost -U bheka -d bheka <<'SQL'
 ALTER TYPE agent_platform ADD VALUE IF NOT EXISTS 'android';
 ALTER TYPE agent_platform ADD VALUE IF NOT EXISTS 'ios';
 CREATE TABLE IF NOT EXISTS evidence_images (
