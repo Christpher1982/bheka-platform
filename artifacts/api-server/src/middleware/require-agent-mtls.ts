@@ -44,7 +44,12 @@ export const requireAgentMTLS: RequestHandler = async (req, res, next) => {
     .where(eq(agentsTable.certificateFingerprint, normalized))
     .limit(1);
 
-  if (!agent || !agent.active) {
+  // endpointId/certificateFingerprint are nullable at the schema level to allow
+  // mobile agents (which never present a certificate and so can never reach
+  // this lookup), but any row matched by certificateFingerprint here is by
+  // construction a desktop agent that went through /v1/agents/enrol, so both
+  // must be non-null. Guard anyway rather than asserting, in case that ever changes.
+  if (!agent || !agent.active || !agent.endpointId || !agent.certificateFingerprint) {
     logger.warn({ fingerprint: normalized }, "Agent mTLS fingerprint not found or inactive");
     sendProblem(res, Problems.agentAuthRequired());
     return;

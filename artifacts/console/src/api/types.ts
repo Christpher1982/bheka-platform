@@ -8,6 +8,8 @@
 //
 // Import is type-only: no @workspace/db runtime code (pg, drizzle) is bundled.
 import type {
+  ActivityEvent,
+  ActivityEventMetadata,
   Approval,
   Case,
   CaseParticipant,
@@ -63,10 +65,14 @@ export type DetectionDto = Pick<
   | "id"
   | "tenantId"
   | "policyRuleId"
+  | "ruleName"
+  | "severity"
+  | "summary"
   | "subjectUserId"
   | "tier"
   | "status"
   | "sourceEventIds"
+  | "occurredAt"
   | "triagedAt"
   | "triagedBy"
   | "resolvedAt"
@@ -75,6 +81,51 @@ export type DetectionDto = Pick<
   | "createdAt"
   | "updatedAt"
 >;
+
+// GET /v1/detections/:detectionId/evidence joins the activity_events row a
+// v0 rule fired on with the parent detection's analyst-facing fields.
+export type DetectionEvidenceDto = Pick<
+  Jsonified<ActivityEvent>,
+  "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  eventId: ActivityEvent["id"];
+  metadata: ActivityEventMetadata;
+  detection: Pick<
+    Jsonified<Detection>,
+    "id" | "ruleName" | "severity" | "summary" | "status"
+  >;
+};
+
+// GET /v1/activity-events list item. capturedText is intentionally omitted —
+// same reasoning as DetectionDto keeping `summary` short instead of the full
+// evidence blob.
+export type ActivityEventDto = Pick<
+  Jsonified<ActivityEvent>,
+  "id" | "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  keystrokeCount: number | null;
+  activeWindowTitle: string | null;
+  // app_usage_session list fields — present (non-null) only when
+  // eventType === "app_usage_session".
+  durationSeconds: number | null;
+  isBrowser: boolean | null;
+  processName: string | null;
+  hasDetection: boolean;
+};
+
+// GET /v1/activity-events/:eventId full detail, including capturedText.
+// Viewing this is logged server-side (action "activity_event.viewed").
+export type ActivityEventDetailDto = Pick<
+  Jsonified<ActivityEvent>,
+  "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  eventId: ActivityEvent["id"];
+  metadata: ActivityEventMetadata;
+  detection?: Pick<
+    Jsonified<Detection>,
+    "id" | "ruleName" | "severity" | "summary" | "status"
+  >;
+};
 
 export type SiteDto = Pick<
   Jsonified<Site>,

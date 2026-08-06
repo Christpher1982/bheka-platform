@@ -12,6 +12,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -20,10 +21,14 @@ import { tenantsTable } from "./tenants.js";
 import { sitesTable } from "./sites.js";
 
 // Platform enum for agent binaries.
+// android/ios added for the lightweight mobile enrolment flow (mobile-enrol),
+// which skips CSR/mTLS issuance — see POST /v1/agents/mobile-enrol.
 export const agentPlatformEnum = pgEnum("agent_platform", [
   "windows",
   "linux",
   "macos",
+  "android",
+  "ios",
 ]);
 
 // Update ring enum per CANON section 11.
@@ -94,34 +99,59 @@ export const endpointsTable = pgTable(
 // One active agent per endpoint at a time. Tied to a specific agent_versions row.
 // certificate_fingerprint: SHA-256 of the per-agent mTLS cert issued at enrolment.
 // last_heartbeat_at: updated by bheka-ingest on each heartbeat, not by gateway directly.
-export const agentsTable = pgTable("agents", {
-  id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
-  tenantId: uuid("tenant_id")
-    .notNull()
-    .references(() => tenantsTable.id),
-  endpointId: uuid("endpoint_id")
-    .notNull()
-    .references(() => endpointsTable.id),
-  agentVersionId: uuid("agent_version_id")
-    .notNull()
-    .references(() => agentVersionsTable.id),
-  // SHA-256 fingerprint of the per-agent mTLS certificate (007_RBAC section 3).
-  certificateFingerprint: text("certificate_fingerprint").notNull().unique(),
-  // Enrolment token used; stored for audit; single-use token itself expires on use.
-  enrolmentTokenHash: text("enrolment_token_hash"),
-  lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
-  enrolledAt: timestamp("enrolled_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+//
+// Mobile agents (android/ios, POST /v1/agents/mobile-enrol) skip the CSR/mTLS flow
+// entirely, so endpoint_id and certificate_fingerprint are nullable: mobile devices
+// are not corporate-owned endpoints (endpoints.is_corporate_owned is permanently
+// true — no BYOD, CANON section 5 refusal 4) and never receive a Vault-issued cert.
+// For the mobile path, site_id/name/hostname are set directly on this row and
+// hostname stores the device-generated deviceId (see mobile-enrol route comment).
+export const agentsTable = pgTable(
+  "agents",
+  {
+    id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenantsTable.id),
+    // Null for mobile agents (android/ios) which have no corporate-owned endpoint.
+    endpointId: uuid("endpoint_id").references(() => endpointsTable.id),
+    agentVersionId: uuid("agent_version_id")
+      .notNull()
+      .references(() => agentVersionsTable.id),
+    // SHA-256 fingerprint of the per-agent mTLS certificate (007_RBAC section 3).
+    // Null for mobile agents, which authenticate with the shared X-Agent-Token
+    // instead of a per-agent cert (no Vault/CSR flow for the mobile PoC).
+    certificateFingerprint: text("certificate_fingerprint").unique(),
+    // Enrolment token used; stored for audit; single-use token itself expires on use.
+    enrolmentTokenHash: text("enrolment_token_hash"),
+    // Mobile-only columns (set by POST /v1/agents/mobile-enrol; null for desktop
+    // agents, which derive site/name/hostname via endpoint_id -> endpoints).
+    siteId: uuid("site_id").references(() => sitesTable.id),
+    name: text("name"),
+    // For mobile agents this stores the device-generated deviceId (re-used as the
+    // idempotency key on re-enrolment) rather than a network hostname.
+    hostname: text("hostname"),
+    lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
+    enrolledAt: timestamp("enrolled_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    // Idempotent mobile re-enrolment lookup: one agent row per (tenant, deviceId).
+    // Desktop agent rows have hostname = null and are excluded via the partial index.
+    uniqueIndex("agents_tenant_hostname_uidx")
+      .on(t.tenantId, t.hostname)
+      .where(sql`${t.hostname} IS NOT NULL`),
+  ],
+);
 
 export type AgentVersion = typeof agentVersionsTable.$inferSelect;
 export type InsertAgentVersion = typeof agentVersionsTable.$inferInsert;

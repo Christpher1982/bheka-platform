@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bheka Monitoring Agent</string>
+    <string name="enrollment_subtitle">Enroll this device to start reporting activity to Bheka.</string>
+    <string name="scan_qr_button">Scan Enrollment QR Code</string>
+    <string name="field_api_url">API URL</string>
+    <string name="field_agent_token">Agent Token</string>
+    <string name="field_tenant_slug">Tenant Slug</string>
+    <string name="field_site_id">Site ID</string>
+    <string name="field_subject_user_id">Subject User ID</string>
+    <string name="field_source_agent_id">Source Agent ID</string>
+    <string name="start_monitoring_button">Start Monitoring</string>
+    <string name="accessibility_service_label">Bheka Monitoring Agent</string>
+    <string name="accessibility_service_description">Allows Bheka to capture keystroke and text-field activity for company monitoring purposes on this managed device.</string>
+</resources>

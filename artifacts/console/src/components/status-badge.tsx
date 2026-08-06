@@ -23,3 +23,28 @@ export function StatusBadge({ status }: { status: string }) {
     </Badge>
   );
 }
+
+// No Badge variant covers the amber middle step, so medium layers palette
+// classes over the outline variant instead of adding a variant.
+const SEVERITY_VARIANTS: Record<string, Variant> = {
+  critical: "destructive",
+  high: "destructive",
+  medium: "outline",
+  low: "secondary",
+};
+
+const SEVERITY_CLASSES: Record<string, string> = {
+  medium: "border-amber-500/50 text-amber-700 dark:text-amber-400",
+};
+
+export function SeverityBadge({ severity }: { severity: string | null }) {
+  if (!severity) return <span className="text-muted-foreground">—</span>;
+  return (
+    <Badge
+      variant={SEVERITY_VARIANTS[severity] ?? "outline"}
+      className={SEVERITY_CLASSES[severity]}
+    >
+      {severity}
+    </Badge>
+  );
+}

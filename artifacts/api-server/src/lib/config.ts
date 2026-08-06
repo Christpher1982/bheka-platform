@@ -23,6 +23,13 @@ const ConfigSchema = z.object({
   // Optional — when absent NATS publishing is a no-op (dev-friendly).
   // Set to a nats:// or tls:// URL to enable the event bus.
   NATS_URL: z.string().optional(),
+  // Shared secret agents present in X-Agent-Token on POST /api/v1/agent/events.
+  // Optional so the gateway still boots without it; the ingest endpoint rejects
+  // every request while it is unset (see middleware/require-agent-token.ts).
+  AGENT_INGEST_TOKEN: z
+    .string()
+    .min(32, "AGENT_INGEST_TOKEN must be at least 32 characters")
+    .optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

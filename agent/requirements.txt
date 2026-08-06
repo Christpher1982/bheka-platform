@@ -1,0 +1,7 @@
+pynput
+requests
+pygetwindow
+mss
+Pillow
+pytesseract
+psutil
