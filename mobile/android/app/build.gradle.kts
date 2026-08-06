@@ -13,7 +13,10 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0.0"
+        // CI (build-android.yml) passes -PversionNameSuffix="-<git-sha>" so any
+        // screenshot of the app's status screen unambiguously proves which
+        // build/commit is actually installed on a device.
+        versionName = "1.0.0" + (project.findProperty("versionNameSuffix") as String? ?: "")
 
         // Compile-time defaults for enrollment fields. These are only used
         // to pre-fill the enrollment UI; the values actually used at runtime
