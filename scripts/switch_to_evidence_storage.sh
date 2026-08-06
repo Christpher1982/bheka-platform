@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS evidence_images (
 );
 SQL
 
+echo "== Building API server (new evidence routes must be compiled, not just running the old dist/) =="
+cd "$REPO_DIR"
+pnpm --filter @workspace/api-server run build
+
 echo "== Starting API server on port 8081 =="
 cd "$REPO_DIR"
 export DATABASE_URL="postgres://bheka:bheka@localhost:5432/bheka"
