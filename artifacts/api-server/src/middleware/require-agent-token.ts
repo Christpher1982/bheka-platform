@@ -40,6 +40,20 @@ export const requireAgentToken: RequestHandler = (req, res, next) => {
   }
 
   const presented = req.headers[TOKEN_HEADER];
+  // TEMP DIAGNOSTIC — logs only lengths and a masked preview, never the real
+  // secret value, to debug a client/server token mismatch. Remove once resolved.
+  logger.warn(
+    {
+      presentedType: typeof presented,
+      presentedLength: typeof presented === "string" ? presented.length : null,
+      presentedPreview:
+        typeof presented === "string"
+          ? `${presented.slice(0, 4)}...${presented.slice(-4)}`
+          : null,
+      expectedLength: expected.length,
+    },
+    "agent token diagnostic",
+  );
   if (typeof presented !== "string" || !secureEquals(presented, expected)) {
     sendProblem(res, Problems.agentTokenRequired());
     return;
