@@ -38,7 +38,9 @@ struct BhekaConfig: Codable, Equatable {
     )
 }
 
-/// QR-code enrollment payload. Field names match the Android agent's QR JSON contract exactly.
+/// QR-code enrollment payload. Decodes the same JSON contract the Android agent's QR
+/// generator produces ("agentToken" / "sourceAgentId"), mapped onto shorter Swift-side
+/// property names via CodingKeys so both agents can share one QR payload format.
 struct QRConfigPayload: Codable {
     let apiUrl: String
     let token: String
@@ -46,6 +48,15 @@ struct QRConfigPayload: Codable {
     let siteId: String
     let subjectUserId: String
     let agentId: String
+
+    enum CodingKeys: String, CodingKey {
+        case apiUrl
+        case token = "agentToken"
+        case tenantSlug
+        case siteId
+        case subjectUserId
+        case agentId = "sourceAgentId"
+    }
 }
 
 enum ConfigStore {
