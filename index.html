@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Bheka Agent — Device Enrollment</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+  :root, [data-theme="dark"] {
+    --color-bg-top: #1c1d20;
+    --color-bg-bottom: #111113;
+    --color-surface: rgba(255,255,255,0.05);
+    --color-surface-tint: rgba(0,0,0,0.18);
+    --color-border: rgba(255,255,255,0.14);
+    --color-hairline: rgba(255,255,255,0.08);
+    --color-text: #ffffff;
+    --color-text-muted: rgba(255,255,255,0.6);
+    --color-text-faint: rgba(255,255,255,0.4);
+    --color-accent: #8cf2bf;
+    --color-accent-dim: rgba(140,242,191,0.18);
+    --color-danger: #f27373;
+    --color-neutral-badge: rgba(255,255,255,0.08);
+    --shadow-card: 0 24px 60px rgba(0,0,0,0.45);
+  }
+  [data-theme="light"] {
+    --color-bg-top: #eef1ef;
+    --color-bg-bottom: #dfe4e1;
+    --color-surface: rgba(255,255,255,0.65);
+    --color-surface-tint: rgba(255,255,255,0.35);
+    --color-border: rgba(15,20,18,0.12);
+    --color-hairline: rgba(15,20,18,0.08);
+    --color-text: #14201a;
+    --color-text-muted: rgba(20,32,26,0.62);
+    --color-text-faint: rgba(20,32,26,0.42);
+    --color-accent: #1a8a56;
+    --color-accent-dim: rgba(26,138,86,0.14);
+    --color-danger: #c23f3f;
+    --color-neutral-badge: rgba(15,20,18,0.06);
+    --shadow-card: 0 24px 50px rgba(20,30,24,0.14);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: none; text-size-adjust: none; }
+  body {
+    min-height: 100dvh;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--color-text);
+    background: linear-gradient(180deg, var(--color-bg-top), var(--color-bg-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: clamp(1.25rem, 5vw, 3rem) 1.25rem;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  .theme-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--color-text-muted);
+  }
+  .theme-toggle svg { width: 18px; height: 18px; }
+
+  .wrap { width: 100%; max-width: 460px; display: flex; flex-direction: column; align-items: center; gap: 2rem; }
+
+  .brand { display: flex; flex-direction: column; align-items: center; gap: 0.9rem; text-align: center; margin-top: 0.5rem; }
+  .brand-badge {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: linear-gradient(160deg, rgba(140,242,191,0.22), rgba(140,242,191,0.04));
+    border: 1px solid var(--color-border);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 32px rgba(140,242,191,0.18);
+  }
+  .brand-badge svg { width: 30px; height: 30px; }
+  .brand h1 {
+    font-family: 'General Sans', 'Inter', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: clamp(1.15rem, 4vw, 1.4rem);
+  }
+  .brand p { color: var(--color-text-muted); font-size: 0.9rem; }
+
+  .card {
+    width: 100%;
+    background: var(--color-surface);
+    background-image: linear-gradient(var(--color-surface-tint), var(--color-surface-tint));
+    border: 1px solid var(--color-border);
+    border-radius: 22px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .card-section { padding: 1.5rem 1.4rem; }
+  .card-section + .card-section { border-top: 1px solid var(--color-hairline); }
+
+  .badge-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 0.32rem 0.65rem; border-radius: 999px;
+    background: var(--color-neutral-badge); color: var(--color-text-muted);
+  }
+  .badge.is-accent { background: var(--color-accent-dim); color: var(--color-accent); }
+  .badge-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+
+  .status-headline { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.35rem; }
+  .status-sub { font-size: 0.88rem; color: var(--color-text-muted); line-height: 1.55; }
+
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    width: 100%; padding: 0.9rem 1rem; border-radius: 14px;
+    font-size: 0.95rem; font-weight: 600; font-family: inherit;
+    border: none; cursor: pointer; text-decoration: none;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--color-accent); color: #0c1310; margin-top: 1.1rem; }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-ghost {
+    background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text);
+    margin-top: 0.7rem;
+  }
+
+  .progress-line {
+    height: 3px; border-radius: 999px; background: var(--color-hairline);
+    overflow: hidden; margin-top: 1rem;
+  }
+  .progress-line span {
+    display: block; height: 100%; width: 40%; background: var(--color-accent);
+    border-radius: 999px; animation: slide 1.1s ease-in-out infinite;
+  }
+  @keyframes slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+  }
+  .hidden { display: none !important; }
+
+  .meta-row { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--color-text-faint); margin-top: 0.9rem; font-family: 'JetBrains Mono', monospace; }
+
+  .steps { list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    display: flex; gap: 0.75rem;
+    padding: 0.65rem 0;
+  }
+  .steps li:not(:last-child) { border-bottom: 1px solid var(--color-hairline); }
+  .steps li::before {
+    content: counter(step);
+    flex-shrink: 0;
+    width: 22px; height: 22px; border-radius: 999px;
+    background: var(--color-accent-dim); color: var(--color-accent);
+    font-size: 0.75rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .steps li span { font-size: 0.88rem; line-height: 1.5; color: var(--color-text-muted); padding-top: 0.1rem; }
+  .steps li strong { color: var(--color-text); font-weight: 600; }
+
+  .section-label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--color-text-faint); margin-bottom: 0.7rem;
+  }
+
+  .footer-note {
+    text-align: center; font-size: 0.76rem; color: var(--color-text-faint);
+    line-height: 1.6; max-width: 380px;
+  }
+  .footer-note a { color: var(--color-text-muted); }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --color-bg-top: #eef1ef; --color-bg-bottom: #dfe4e1;
+      --color-surface: rgba(255,255,255,0.65); --color-surface-tint: rgba(255,255,255,0.35);
+      --color-border: rgba(15,20,18,0.12); --color-hairline: rgba(15,20,18,0.08);
+      --color-text: #14201a; --color-text-muted: rgba(20,32,26,0.62); --color-text-faint: rgba(20,32,26,0.42);
+      --color-accent: #1a8a56; --color-accent-dim: rgba(26,138,86,0.14); --color-danger: #c23f3f;
+      --color-neutral-badge: rgba(15,20,18,0.06); --shadow-card: 0 24px 50px rgba(20,30,24,0.14);
+    }
+  }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" data-theme-toggle aria-label="Switch to light mode">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
+
+<div class="wrap">
+
+  <div class="brand">
+    <div class="brand-badge">
+      <svg viewBox="0 0 40 40" fill="none" aria-label="Bheka">
+        <rect x="1" y="1" width="38" height="38" rx="10" stroke="var(--color-accent)" stroke-opacity="0.5" stroke-width="1.2"/>
+        <path d="M13 9 L13 31 L22 31 C27 31 30.5 28 30.5 23.8 C30.5 20.6 28.3 18.4 25.2 17.7 C28 16.9 30 14.3 30 11.4 C30 9.2 27.5 9 22 9 Z M17.5 13 L21.5 13 C23.7 13 25 14 25 15.9 C25 17.7 23.7 18.6 21.5 18.6 L17.5 18.6 Z M17.5 22.4 L22.5 22.4 C25 22.4 26.2 23.6 26.2 25.6 C26.2 27.6 25 28.8 22.5 28.8 L17.5 28.8 Z"
+          fill="var(--color-accent)"/>
+      </svg>
+    </div>
+    <h1>Bheka Agent</h1>
+    <p>Scan or open this page on the device you want to enroll.</p>
+  </div>
+
+  <div class="card">
+
+    <!-- ANDROID PATH -->
+    <div id="path-android" class="card-section hidden">
+      <div class="badge-row">
+        <span class="badge is-accent"><span class="badge-dot"></span>Android detected</span>
+      </div>
+      <div class="status-headline" id="android-headline">Starting your download…</div>
+      <div class="status-sub" id="android-sub">Bheka Agent will download automatically. If nothing happens in a few seconds, tap the button below.</div>
+      <div class="progress-line" id="android-progress"><span></span></div>
+      <button class="btn btn-primary hidden" id="android-download-btn">Download Bheka Agent</button>
+      <div class="meta-row">
+        <span>bheka-agent.apk</span>
+        <span>47.9 MB</span>
+      </div>
+    </div>
+
+    <!-- IOS PATH -->
+    <div id="path-ios" class="card-section hidden">
+      <div class="badge-row">
+        <span class="badge"><span class="badge-dot"></span>iPhone / iPad detected</span>
+      </div>
+      <div class="status-headline">iOS install isn't self-service yet</div>
+      <div class="status-sub">Automatic installation for iOS is pending Apple Developer Program approval. For now, your admin needs to install Bheka Agent on this device directly. Contact them to arrange it.</div>
+    </div>
+
+    <!-- DESKTOP / UNKNOWN PATH -->
+    <div id="path-other" class="card-section hidden">
+      <div class="badge-row">
+        <span class="badge"><span class="badge-dot"></span>No mobile device detected</span>
+      </div>
+      <div class="status-headline">Open this link on the phone you're enrolling</div>
+      <div class="status-sub">This page installs Bheka Agent automatically on Android. Scan the QR code with the phone's camera, or open this same link directly on that device.</div>
+      <button class="btn btn-ghost" id="other-download-btn">Download Android APK anyway</button>
+    </div>
+
+    <div class="card-section">
+      <div class="section-label">After installing</div>
+      <ul class="steps">
+        <li><span><strong>Open the downloaded file</strong> and allow installs from this source if prompted.</span></li>
+        <li><span><strong>Open Bheka Agent</strong> and grant the permissions it requests (Accessibility, usage access, notifications).</span></li>
+        <li><span><strong>Scan the enrollment QR code</strong> your admin gives you — or enter the site and tenant details manually — then tap Start Monitoring.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="footer-note">
+    For company-issued devices only. Installation and use of Bheka Agent is governed by your organization's Acceptable Use Policy, and monitoring activity is logged in accordance with applicable law. Contact your IT administrator with any questions.
+  </p>
+
+</div>
+
+<script>
+  (function () {
+    var toggle = document.querySelector('[data-theme-toggle]');
+    var root = document.documentElement;
+    var mode = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+    root.setAttribute('data-theme', mode);
+    function renderIcon() {
+      toggle.innerHTML = mode === 'dark'
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      toggle.setAttribute('aria-label', 'Switch to ' + (mode === 'dark' ? 'light' : 'dark') + ' mode');
+    }
+    renderIcon();
+    toggle.addEventListener('click', function () {
+      mode = mode === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', mode);
+      renderIcon();
+    });
+  })();
+
+  (function () {
+    var ua = navigator.userAgent || '';
+    var isAndroid = /Android/i.test(ua);
+    var isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    var apkPath = 'bheka-agent.apk';
+
+    function triggerApkDownload() {
+      var a = document.createElement('a');
+      a.href = apkPath;
+      a.download = 'BhekaAgent.apk';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    if (isAndroid) {
+      document.getElementById('path-android').classList.remove('hidden');
+      var headline = document.getElementById('android-headline');
+      var sub = document.getElementById('android-sub');
+      var progress = document.getElementById('android-progress');
+      var btn = document.getElementById('android-download-btn');
+
+      btn.addEventListener('click', triggerApkDownload);
+
+      setTimeout(function () {
+        triggerApkDownload();
+        setTimeout(function () {
+          headline.textContent = 'Download started';
+          sub.textContent = 'Check your notifications or Downloads folder for bheka-agent.apk, then open it to install.';
+          progress.classList.add('hidden');
+          btn.classList.remove('hidden');
+          btn.textContent = 'Download again';
+        }, 1400);
+      }, 600);
+    } else if (isIOS) {
+      document.getElementById('path-ios').classList.remove('hidden');
+    } else {
+      document.getElementById('path-other').classList.remove('hidden');
+      document.getElementById('other-download-btn').addEventListener('click', triggerApkDownload);
+    }
+  })();
+</script>
+
+</body>
+</html>
