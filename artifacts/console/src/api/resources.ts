@@ -3,12 +3,15 @@
 
 import { apiFetch, newIdempotencyKey } from "./client";
 import type {
+  ActivityEventDetailDto,
+  ActivityEventDto,
   ApprovalDto,
   CaseDetailDto,
   CaseDto,
   CaseParticipantDto,
   CaseStatus,
   DetectionDto,
+  DetectionEvidenceDto,
   Paginated,
   RoleAssignmentDto,
   RoleDto,
@@ -74,6 +77,34 @@ export function listDetections(
   query: PageQuery & { status?: string; tier?: number },
 ): Promise<Paginated<DetectionDto>> {
   return apiFetch("/v1/detections", { params: { ...query } });
+}
+
+export function getDetection(detectionId: string): Promise<DetectionDto> {
+  return apiFetch(`/v1/detections/${detectionId}`);
+}
+
+// Full raw event behind a detection's short summary. Fetching this is logged
+// to audit_log server-side (action "detection.evidence_viewed").
+export function getDetectionEvidence(
+  detectionId: string,
+): Promise<DetectionEvidenceDto> {
+  return apiFetch(`/v1/detections/${detectionId}/evidence`);
+}
+
+// ── activity events ────────────────────────────────────────────────────────
+
+export function listActivityEvents(
+  query: PageQuery & { subjectUserId?: string; siteId?: string },
+): Promise<Paginated<ActivityEventDto>> {
+  return apiFetch("/v1/activity-events", { params: { ...query } });
+}
+
+// Full raw event, including capturedText. Fetching this is logged to
+// audit_log server-side (action "activity_event.viewed").
+export function getActivityEvent(
+  eventId: string,
+): Promise<ActivityEventDetailDto> {
+  return apiFetch(`/v1/activity-events/${eventId}`);
 }
 
 // ── sites ───────────────────────────────────────────────────────────────────

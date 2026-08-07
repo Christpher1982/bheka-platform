@@ -1,7 +1,9 @@
 // Canonical tables: detections, risk_scores
 // Per CANON section 8: UUIDv7 IDs, timestamptz, snake_case.
 // 008_DATA_MODEL section 4 narrative.
-// Detections are written by bheka-policy, never via the REST API (009_API_SURFACE section 8).
+// Detections are written by bheka-policy and by the v0 rule engine that runs on
+// agent telemetry ingest. They are never created by a console-facing REST call
+// (009_API_SURFACE section 8) — the only console write is triage state.
 // Risk scores are appended-only (no updated_at) — each row is an immutable scored point
 // in time with contributing_signals for explainability (008_DATA_MODEL section 4).
 
@@ -17,8 +19,11 @@ import {
 import { sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import { tenantsTable } from "./tenants.js";
+import { sitesTable } from "./sites.js";
 import { usersTable } from "./users.js";
+import { casesTable } from "./cases.js";
 import { policyRulesTable } from "./policies.js";
+import { activityEventsTable } from "./activity.js";
 
 // Lifecycle state of a detection.
 export const detectionStatusEnum = pgEnum("detection_status", [
@@ -26,6 +31,14 @@ export const detectionStatusEnum = pgEnum("detection_status", [
   "triaged",
   "resolved",
   "false_positive",
+]);
+
+// Analyst-facing urgency. Set by the rule that produced the detection.
+export const detectionSeverityEnum = pgEnum("detection_severity", [
+  "low",
+  "medium",
+  "high",
+  "critical",
 ]);
 
 // Written by bheka-policy when a rule matches incoming telemetry.
@@ -38,14 +51,28 @@ export const detectionsTable = pgTable("detections", {
   tenantId: uuid("tenant_id")
     .notNull()
     .references(() => tenantsTable.id),
-  policyRuleId: uuid("policy_rule_id")
-    .notNull()
-    .references(() => policyRulesTable.id),
+  siteId: uuid("site_id").references(() => sitesTable.id),
+  // Nullable: v0 rules (src/rules/evaluate.ts in bheka-gateway) are code-defined
+  // and have no policy_rules row. Set only for detections raised by bheka-policy.
+  policyRuleId: uuid("policy_rule_id").references(() => policyRulesTable.id),
+  // Identifier of the rule that fired, e.g. "sensitive_keyword". Stable across
+  // both code-defined v0 rules and policy_rules-backed rules.
+  ruleName: text("rule_name"),
+  severity: detectionSeverityEnum("severity"),
+  // Short analyst-readable explanation of why the rule fired.
+  summary: text("summary"),
   subjectUserId: uuid("subject_user_id")
     .notNull()
     .references(() => usersTable.id),
+  // Set when an investigator attaches this detection to a case.
+  caseId: uuid("case_id").references(() => casesTable.id),
   // Pointers into ClickHouse. Never store event content here.
   sourceEventIds: text("source_event_ids").array().notNull().default(sql`ARRAY[]::text[]`),
+  // The activity_events row that triggered a v0 rule. Null for bheka-policy
+  // detections, which point into ClickHouse via source_event_ids instead.
+  sourceEventId: uuid("source_event_id").references(() => activityEventsTable.id),
+  // When the triggering activity happened, not when the detection was written.
+  occurredAt: timestamp("occurred_at", { withTimezone: true }),
   // Visibility tier of the telemetry that triggered this detection.
   tier: integer("tier").notNull(),
   status: detectionStatusEnum("status").notNull().default("new"),

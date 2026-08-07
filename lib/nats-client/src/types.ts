@@ -83,12 +83,15 @@ export type AgentEnrolledEvent = Envelope<
   "bheka-gateway",
   {
     agent_id: string;
-    endpoint_id: string;
+    // Null for mobile agents (android/ios) enrolled via POST /v1/agents/mobile-enrol,
+    // which have no corporate-owned endpoints row (CANON section 5 refusal 4).
+    endpoint_id: string | null;
     tenant_id: string;
     site_id: string;
-    platform: "windows" | "linux" | "macos";
+    platform: "windows" | "linux" | "macos" | "android" | "ios";
     agent_version_id: string;
-    certificate_fingerprint: string;
+    // Null for mobile agents — no Vault-issued mTLS certificate in the PoC flow.
+    certificate_fingerprint: string | null;
   }
 >;
 

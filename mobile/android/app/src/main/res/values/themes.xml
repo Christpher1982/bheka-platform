@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base application theme, using Material Components. -->
+    <style name="Theme.BhekaAgent" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/bheka_primary</item>
+        <item name="colorPrimaryVariant">@color/bheka_primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+
+    <!-- Fully transparent theme used by MediaProjectionRequestActivity, which
+         exists only to show the system's screen-capture consent dialog and
+         should not render any visible UI of its own. -->
+    <style name="Theme.BhekaAgent.Transparent" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+</resources>

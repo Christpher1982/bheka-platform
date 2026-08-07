@@ -1,0 +1,621 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5D9B9FC4B6A44AF088302C72 /* BhekaAgentApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D2DF5C1007F4C8195DEB37C /* BhekaAgentApp.swift */; };
+		A5805689599B498197119009 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382A1BB4174041389F28A6E4 /* ContentView.swift */; };
+		7D027BDF46AB40EE9E64320D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1422D0A64448DCB03E1C5E /* Theme.swift */; };
+		348DFF48299F42F895CF0D3D /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93724B51E255493B8174F69C /* Config.swift */; };
+		CABDC0080A92483EA30A58A4 /* ApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AF7443727F42FB9C381A52 /* ApiClient.swift */; };
+		BAFFF5CF5B634E129797ECE0 /* ScreenCaptureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED6B34DDD494AEAB69C8B7D /* ScreenCaptureManager.swift */; };
+		67B8A9D7D67849E0B720E51F /* AppUsageTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 245D40E031E94665B83D38DF /* AppUsageTracker.swift */; };
+		4BF5D13D3F13415D9D395A5D /* OCRProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8385AFF306745F7A8ACDF10 /* OCRProcessor.swift */; };
+		F4342545F9994C9BB24B4086 /* ImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50BDCA351624293B9ECEB74 /* ImageProcessor.swift */; };
+		8507A670E6C04BF6965DE7C8 /* QRScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84D9DD159A234D568F9593CB /* QRScanner.swift */; };
+		977C6B8791924B57B642DB9F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 06F87F9E52B74900AF7A2520 /* Assets.xcassets */; };
+		63863FEAA5BE4D369D772B6E /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1CC05E2FB1A54330BEFD7020 /* Preview Assets.xcassets */; };
+
+		91C9EAA318F441E59171935A /* SampleHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A212DABE1564444A8635634 /* SampleHandler.swift */; };
+		3BC119FE96B240B8B3C056E3 /* ExtensionApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAB7FF81728F40579843C19B /* ExtensionApiClient.swift */; };
+
+		B26E367949384BD583FC478F /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77761BF8D05F4C0BA9028419 /* ReplayKit.framework */; };
+		B08BD0F646F44C9EACFD3C82 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 359DCCBABAD546CA847F85E4 /* Vision.framework */; };
+		8D404A213CE14AC6B92A8D83 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F4DF29FD488422684E7B6C4 /* AVFoundation.framework */; };
+		6DA2DFC215384681B495D450 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3563D87DF6BB4E30A06DF114 /* UIKit.framework */; };
+		587308FDA2E246188BD1FCA6 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75FD91A4134B48D581649833 /* SwiftUI.framework */; };
+		0AAA2CBE713A4D8A851AB0C4 /* CoreImage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 03C520841FE74956B325CB26 /* CoreImage.framework */; };
+		F807E21D22D8425AB218D01F /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CDB21A733664F30879005D9 /* VideoToolbox.framework */; };
+
+		6AEAE93D6E8448E8A115EAE6 /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AECF1BE2228E49B8813BBD25 /* ReplayKit.framework */; };
+		AE149A32A06A40D9940438F9 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DC5321BC3DB4BA09342AD36 /* Vision.framework */; };
+		708599C2FDFC4FF990BCD9CB /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 120545422AC14173BB4291CA /* UIKit.framework */; };
+		E202242AA4A34F6D88F2E692 /* CoreImage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D89865D105A4E1489986585 /* CoreImage.framework */; };
+		B96912A88CEA4D089FA5734A /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05A7603ABD7E4157A89AA426 /* VideoToolbox.framework */; };
+
+		11EBF94AB69C41BD9340E6C7 /* BhekaBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 40D90B6BBCF24B1492BABFE9 /* BhekaBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F76F43984E404AC59CFE25C8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FFA93EB44EB44321BC4161D8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D9F0FB19E8184C48AFA94144;
+			remoteInfo = BhekaBroadcastExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B5B72204C8894444A66AF7E8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				11EBF94AB69C41BD9340E6C7 /* BhekaBroadcastExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		C1B08F16242640908C465BB3 /* BhekaAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BhekaAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		40D90B6BBCF24B1492BABFE9 /* BhekaBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BhekaBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+
+		7D2DF5C1007F4C8195DEB37C /* BhekaAgentApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BhekaAgentApp.swift; sourceTree = "<group>"; };
+		382A1BB4174041389F28A6E4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5E1422D0A64448DCB03E1C5E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		93724B51E255493B8174F69C /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		88AF7443727F42FB9C381A52 /* ApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiClient.swift; sourceTree = "<group>"; };
+		3ED6B34DDD494AEAB69C8B7D /* ScreenCaptureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureManager.swift; sourceTree = "<group>"; };
+		245D40E031E94665B83D38DF /* AppUsageTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUsageTracker.swift; sourceTree = "<group>"; };
+		C8385AFF306745F7A8ACDF10 /* OCRProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRProcessor.swift; sourceTree = "<group>"; };
+		D50BDCA351624293B9ECEB74 /* ImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessor.swift; sourceTree = "<group>"; };
+		84D9DD159A234D568F9593CB /* QRScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanner.swift; sourceTree = "<group>"; };
+		17BA2906067D4848848A235D /* BhekaAgent.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BhekaAgent.entitlements; sourceTree = "<group>"; };
+		E713795C93664026883E096A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		06F87F9E52B74900AF7A2520 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1CC05E2FB1A54330BEFD7020 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+
+		1A212DABE1564444A8635634 /* SampleHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleHandler.swift; sourceTree = "<group>"; };
+		BAB7FF81728F40579843C19B /* ExtensionApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionApiClient.swift; sourceTree = "<group>"; };
+		6F10360A13B7490A8E364AC3 /* BhekaBroadcastExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BhekaBroadcastExtension.entitlements; sourceTree = "<group>"; };
+		9D32912D772E4A3885823889 /* BhekaBroadcastExtension-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "BhekaBroadcastExtension-Info.plist"; sourceTree = "<group>"; };
+
+		77761BF8D05F4C0BA9028419 /* ReplayKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ReplayKit.framework; path = System/Library/Frameworks/ReplayKit.framework; sourceTree = SDKROOT; };
+		359DCCBABAD546CA847F85E4 /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
+		1F4DF29FD488422684E7B6C4 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		3563D87DF6BB4E30A06DF114 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		75FD91A4134B48D581649833 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		03C520841FE74956B325CB26 /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = System/Library/Frameworks/CoreImage.framework; sourceTree = SDKROOT; };
+		2CDB21A733664F30879005D9 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
+
+		AECF1BE2228E49B8813BBD25 /* ReplayKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ReplayKit.framework; path = System/Library/Frameworks/ReplayKit.framework; sourceTree = SDKROOT; };
+		7DC5321BC3DB4BA09342AD36 /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
+		120545422AC14173BB4291CA /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		6D89865D105A4E1489986585 /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = System/Library/Frameworks/CoreImage.framework; sourceTree = SDKROOT; };
+		05A7603ABD7E4157A89AA426 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6E5D2BDA95D546FB92EFCBE0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B26E367949384BD583FC478F /* ReplayKit.framework in Frameworks */,
+				B08BD0F646F44C9EACFD3C82 /* Vision.framework in Frameworks */,
+				8D404A213CE14AC6B92A8D83 /* AVFoundation.framework in Frameworks */,
+				6DA2DFC215384681B495D450 /* UIKit.framework in Frameworks */,
+				587308FDA2E246188BD1FCA6 /* SwiftUI.framework in Frameworks */,
+				0AAA2CBE713A4D8A851AB0C4 /* CoreImage.framework in Frameworks */,
+				F807E21D22D8425AB218D01F /* VideoToolbox.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A42A368513464FFAA49CFBC5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6AEAE93D6E8448E8A115EAE6 /* ReplayKit.framework in Frameworks */,
+				AE149A32A06A40D9940438F9 /* Vision.framework in Frameworks */,
+				708599C2FDFC4FF990BCD9CB /* UIKit.framework in Frameworks */,
+				E202242AA4A34F6D88F2E692 /* CoreImage.framework in Frameworks */,
+				B96912A88CEA4D089FA5734A /* VideoToolbox.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D9537D12EFB44924A55E0C50 = {
+			isa = PBXGroup;
+			children = (
+				D71EF8C149884383BF8EDF69 /* BhekaAgent */,
+				28AB8E7CE4EB44FC9CDB799F /* BhekaBroadcastExtension */,
+				E713795C93664026883E096A /* Info.plist */,
+				9D32912D772E4A3885823889 /* BhekaBroadcastExtension-Info.plist */,
+				44EA445737F6445380F9B75B /* Frameworks */,
+				6F7924DD33C6441DA4E9883A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6F7924DD33C6441DA4E9883A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C1B08F16242640908C465BB3 /* BhekaAgent.app */,
+				40D90B6BBCF24B1492BABFE9 /* BhekaBroadcastExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		44EA445737F6445380F9B75B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				77761BF8D05F4C0BA9028419 /* ReplayKit.framework */,
+				359DCCBABAD546CA847F85E4 /* Vision.framework */,
+				1F4DF29FD488422684E7B6C4 /* AVFoundation.framework */,
+				3563D87DF6BB4E30A06DF114 /* UIKit.framework */,
+				75FD91A4134B48D581649833 /* SwiftUI.framework */,
+				03C520841FE74956B325CB26 /* CoreImage.framework */,
+				2CDB21A733664F30879005D9 /* VideoToolbox.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D71EF8C149884383BF8EDF69 /* BhekaAgent */ = {
+			isa = PBXGroup;
+			children = (
+				7D2DF5C1007F4C8195DEB37C /* BhekaAgentApp.swift */,
+				382A1BB4174041389F28A6E4 /* ContentView.swift */,
+				5E1422D0A64448DCB03E1C5E /* Theme.swift */,
+				93724B51E255493B8174F69C /* Config.swift */,
+				88AF7443727F42FB9C381A52 /* ApiClient.swift */,
+				3ED6B34DDD494AEAB69C8B7D /* ScreenCaptureManager.swift */,
+				245D40E031E94665B83D38DF /* AppUsageTracker.swift */,
+				C8385AFF306745F7A8ACDF10 /* OCRProcessor.swift */,
+				D50BDCA351624293B9ECEB74 /* ImageProcessor.swift */,
+				84D9DD159A234D568F9593CB /* QRScanner.swift */,
+				17BA2906067D4848848A235D /* BhekaAgent.entitlements */,
+				A5A040EC07BD477F918366C3 /* Assets.xcassets */,
+				79BB3875EDC44F3FA5B1FA2E /* Preview Content */,
+			);
+			path = BhekaAgent;
+			sourceTree = "<group>";
+		};
+		A5A040EC07BD477F918366C3 /* Assets.xcassets */ = {
+			isa = PBXGroup;
+			children = (
+				06F87F9E52B74900AF7A2520 /* Assets.xcassets */,
+			);
+			sourceTree = "<group>";
+			name = "Resources";
+		};
+		79BB3875EDC44F3FA5B1FA2E /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				1CC05E2FB1A54330BEFD7020 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		28AB8E7CE4EB44FC9CDB799F /* BhekaBroadcastExtension */ = {
+			isa = PBXGroup;
+			children = (
+				1A212DABE1564444A8635634 /* SampleHandler.swift */,
+				BAB7FF81728F40579843C19B /* ExtensionApiClient.swift */,
+				6F10360A13B7490A8E364AC3 /* BhekaBroadcastExtension.entitlements */,
+			);
+			path = BhekaBroadcastExtension;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		921A5A80895049E487CC1F57 /* BhekaAgent */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E1617B7831844679C7804F1 /* Build configuration list for PBXNativeTarget "BhekaAgent" */;
+			buildPhases = (
+				68654D4CE5514EB79F92D6ED /* Sources */,
+				6E5D2BDA95D546FB92EFCBE0 /* Frameworks */,
+				D683BD86010B42DE8630EFC9 /* Resources */,
+				B5B72204C8894444A66AF7E8 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				40C33DE44BDB4C89B97B647B /* PBXTargetDependency */,
+			);
+			name = BhekaAgent;
+			productName = BhekaAgent;
+			productReference = C1B08F16242640908C465BB3 /* BhekaAgent.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D9F0FB19E8184C48AFA94144 /* BhekaBroadcastExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F7DCACB471BF428BA79A7EB1 /* Build configuration list for PBXNativeTarget "BhekaBroadcastExtension" */;
+			buildPhases = (
+				9553A5C3D4F944428985905E /* Sources */,
+				A42A368513464FFAA49CFBC5 /* Frameworks */,
+				F568DA3183864592990F9BFA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BhekaBroadcastExtension;
+			productName = BhekaBroadcastExtension;
+			productReference = 40D90B6BBCF24B1492BABFE9 /* BhekaBroadcastExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FFA93EB44EB44321BC4161D8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1520;
+				LastUpgradeCheck = 1520;
+				TargetAttributes = {
+					921A5A80895049E487CC1F57 = {
+						CreatedOnToolsVersion = 15.2;
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					D9F0FB19E8184C48AFA94144 = {
+						CreatedOnToolsVersion = 15.2;
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 37D268F2E4474D93832432C7 /* Build configuration list for PBXProject "BhekaAgent" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D9537D12EFB44924A55E0C50;
+			productRefGroup = 6F7924DD33C6441DA4E9883A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				921A5A80895049E487CC1F57 /* BhekaAgent */,
+				D9F0FB19E8184C48AFA94144 /* BhekaBroadcastExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D683BD86010B42DE8630EFC9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				977C6B8791924B57B642DB9F /* Assets.xcassets in Resources */,
+				63863FEAA5BE4D369D772B6E /* Preview Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F568DA3183864592990F9BFA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		68654D4CE5514EB79F92D6ED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5D9B9FC4B6A44AF088302C72 /* BhekaAgentApp.swift in Sources */,
+				A5805689599B498197119009 /* ContentView.swift in Sources */,
+				7D027BDF46AB40EE9E64320D /* Theme.swift in Sources */,
+				348DFF48299F42F895CF0D3D /* Config.swift in Sources */,
+				CABDC0080A92483EA30A58A4 /* ApiClient.swift in Sources */,
+				BAFFF5CF5B634E129797ECE0 /* ScreenCaptureManager.swift in Sources */,
+				67B8A9D7D67849E0B720E51F /* AppUsageTracker.swift in Sources */,
+				4BF5D13D3F13415D9D395A5D /* OCRProcessor.swift in Sources */,
+				F4342545F9994C9BB24B4086 /* ImageProcessor.swift in Sources */,
+				8507A670E6C04BF6965DE7C8 /* QRScanner.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9553A5C3D4F944428985905E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				91C9EAA318F441E59171935A /* SampleHandler.swift in Sources */,
+				3BC119FE96B240B8B3C056E3 /* ExtensionApiClient.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		40C33DE44BDB4C89B97B647B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D9F0FB19E8184C48AFA94144 /* BhekaBroadcastExtension */;
+			targetProxy = F76F43984E404AC59CFE25C8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		F5FC3E6486574ECE8BA0634B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B3D33F1A2DC5480DA367D419 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B0EF495DBCDE4A93B58C21FD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BhekaAgent/BhekaAgent.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"BhekaAgent/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Bheka Agent";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.bheka.agent;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		646E78CA14C24E6AA508F9F3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BhekaAgent/BhekaAgent.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"BhekaAgent/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Bheka Agent";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.bheka.agent;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9D6C29952FA04AF086E3093B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BhekaBroadcastExtension/BhekaBroadcastExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "BhekaBroadcastExtension-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Bheka Monitoring";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.bheka.agent.BhekaBroadcastExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8D7B62EFE1094DBD93FCAD11 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BhekaBroadcastExtension/BhekaBroadcastExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "BhekaBroadcastExtension-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Bheka Monitoring";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.bheka.agent.BhekaBroadcastExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		37D268F2E4474D93832432C7 /* Build configuration list for PBXProject "BhekaAgent" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F5FC3E6486574ECE8BA0634B /* Debug */,
+				B3D33F1A2DC5480DA367D419 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7E1617B7831844679C7804F1 /* Build configuration list for PBXNativeTarget "BhekaAgent" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0EF495DBCDE4A93B58C21FD /* Debug */,
+				646E78CA14C24E6AA508F9F3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F7DCACB471BF428BA79A7EB1 /* Build configuration list for PBXNativeTarget "BhekaBroadcastExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D6C29952FA04AF086E3093B /* Debug */,
+				8D7B62EFE1094DBD93FCAD11 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FFA93EB44EB44321BC4161D8 /* Project object */;
+}

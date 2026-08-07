@@ -66,11 +66,12 @@ export const Problems = {
     };
   },
 
-  notFound(): ProblemDetail {
+  notFound(detail?: string): ProblemDetail {
     return {
       type: `${PROBLEM_BASE}/not-found`,
       title: "Resource not found",
       status: 404,
+      detail,
     };
   },
 
@@ -108,6 +109,15 @@ export const Problems = {
     };
   },
 
+  payloadTooLarge(detail?: string): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/payload-too-large`,
+      title: "Request payload too large",
+      status: 413,
+      detail,
+    };
+  },
+
   invalidEnrolmentToken(): ProblemDetail {
     return {
       type: `${PROBLEM_BASE}/invalid-enrolment-token`,
@@ -127,6 +137,16 @@ export const Problems = {
       detail:
         "This endpoint requires a valid agent mTLS certificate. " +
         "Ensure the X-Agent-Cert-Fingerprint header is set by the TLS-terminating proxy.",
+    };
+  },
+
+  agentTokenRequired(): ProblemDetail {
+    return {
+      type: `${PROBLEM_BASE}/agent-authentication-required`,
+      title: "Agent token authentication required",
+      status: 401,
+      detail:
+        "This endpoint requires a valid shared ingest token in the X-Agent-Token header.",
     };
   },
 
