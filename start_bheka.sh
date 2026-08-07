@@ -32,9 +32,18 @@ echo "=== 4. Start API server (background, port 8081) ==="
 export DATABASE_URL="postgres://bheka:bheka@localhost:5432/bheka"
 export REDIS_URL="redis://localhost:6379"
 export SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+# Shared secret the mobile/desktop agents present in the X-Agent-Token header on
+# POST /api/v1/agent/events. This is optional in the server's config schema (the
+# gateway still boots without it), but the ingest endpoint rejects EVERY request
+# with 401 while it is unset — that was the real cause of persistent upload 401s,
+# unrelated to whatever token value the agent app itself has configured. Must
+# match the token baked into the iOS/Android agent's fallback config and QR
+# payload exactly.
+export AGENT_INGEST_TOKEN="4a57a3cdf82af186fe0d8ce7d7235ff77008b1bf16edebac"
 
 nohup env DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" PORT=8081 \
   SESSION_SECRET="$SESSION_SECRET" \
+  AGENT_INGEST_TOKEN="$AGENT_INGEST_TOKEN" \
   WEBAUTHN_RP_ID=localhost WEBAUTHN_RP_ORIGIN="http://localhost:8081" \
   ALLOWED_ORIGINS="http://localhost:5173" NODE_ENV=development \
   pnpm --filter @workspace/api-server run start > /tmp/api.log 2>&1 &
