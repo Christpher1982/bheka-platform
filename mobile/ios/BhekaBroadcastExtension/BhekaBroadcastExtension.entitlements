@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Must match the App Group declared in BhekaAgent.entitlements exactly — this is
+	     how SampleHandler.swift's ExtensionConfigStore can read the configuration and
+	     monitoring-status flags written by the main app's ConfigStore. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.io.bheka.agent</string>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Groups entitlement: shares UserDefaults (configuration + monitoring status)
+	     between BhekaAgent and BhekaBroadcastExtension. The identifier must be enabled
+	     for BOTH targets under Signing & Capabilities > App Groups in Xcode, and must
+	     also be registered in the Apple Developer portal for your Team ID. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.io.bheka.agent</string>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>io.bheka.agent</string>
+
+	<key>CFBundleExecutable</key>
+	<string>BhekaAgent</string>
+
+	<key>CFBundleName</key>
+	<string>BhekaAgent</string>
+
+	<key>CFBundleDisplayName</key>
+	<string>Bheka Agent</string>
+
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+
+	<key>NSCameraUsageDescription</key>
+	<string>Bheka Agent uses the camera to scan enrollment QR codes provided by your IT administrator.</string>
+
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Bheka Agent does not record audio, but ReplayKit requires this permission string to be present.</string>
+
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+
+	<key>UILaunchScreen</key>
+	<dict/>
+
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
+	<key>UIRequiresFullScreen</key>
+	<false/>
+
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>100.87.148.94</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

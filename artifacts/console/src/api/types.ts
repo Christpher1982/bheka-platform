@@ -8,10 +8,13 @@
 //
 // Import is type-only: no @workspace/db runtime code (pg, drizzle) is bundled.
 import type {
+  ActivityEvent,
+  ActivityEventMetadata,
   Approval,
   Case,
   CaseParticipant,
   Detection,
+  EvidenceImage,
   Role,
   RoleAssignment,
   Site,
@@ -63,10 +66,14 @@ export type DetectionDto = Pick<
   | "id"
   | "tenantId"
   | "policyRuleId"
+  | "ruleName"
+  | "severity"
+  | "summary"
   | "subjectUserId"
   | "tier"
   | "status"
   | "sourceEventIds"
+  | "occurredAt"
   | "triagedAt"
   | "triagedBy"
   | "resolvedAt"
@@ -75,6 +82,56 @@ export type DetectionDto = Pick<
   | "createdAt"
   | "updatedAt"
 >;
+
+// GET /v1/detections/:detectionId/evidence joins the activity_events row a
+// v0 rule fired on with the parent detection's analyst-facing fields.
+export type DetectionEvidenceDto = Pick<
+  Jsonified<ActivityEvent>,
+  "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  eventId: ActivityEvent["id"];
+  metadata: ActivityEventMetadata;
+  detection: Pick<
+    Jsonified<Detection>,
+    "id" | "ruleName" | "severity" | "summary" | "status"
+  >;
+};
+
+// GET /v1/activity-events list item. capturedText is intentionally omitted —
+// same reasoning as DetectionDto keeping `summary` short instead of the full
+// evidence blob.
+export type ActivityEventDto = Pick<
+  Jsonified<ActivityEvent>,
+  "id" | "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  keystrokeCount: number | null;
+  activeWindowTitle: string | null;
+  // app_usage_session list fields — present (non-null) only when
+  // eventType === "app_usage_session".
+  durationSeconds: number | null;
+  isBrowser: boolean | null;
+  processName: string | null;
+  hasDetection: boolean;
+  // Non-null only for screenshot_capture events with a successfully stored
+  // image (see evidence_images / agent-events.ts). hasEvidenceImage is a
+  // convenience boolean derived from the same field.
+  evidenceImageId: string | null;
+  hasEvidenceImage: boolean;
+};
+
+// GET /v1/activity-events/:eventId full detail, including capturedText.
+// Viewing this is logged server-side (action "activity_event.viewed").
+export type ActivityEventDetailDto = Pick<
+  Jsonified<ActivityEvent>,
+  "eventType" | "occurredAt" | "siteId" | "subjectUserId" | "sourceAgentId"
+> & {
+  eventId: ActivityEvent["id"];
+  metadata: ActivityEventMetadata;
+  detection?: Pick<
+    Jsonified<Detection>,
+    "id" | "ruleName" | "severity" | "summary" | "status"
+  >;
+};
 
 export type SiteDto = Pick<
   Jsonified<Site>,
@@ -141,6 +198,29 @@ export interface SessionDto {
   familyName: string | null;
   roles: Role["name"][];
 }
+
+// GET /v1/evidence-images list item and GET /v1/evidence-images/:id detail
+// share the same shape — neither includes the storage-layer fields
+// (storageKey/ivBase64/authTagBase64/contentHashSha256): those never need to
+// leave the api-server. Image bytes are fetched separately via
+// GET /v1/evidence-images/:id/image (see evidenceImageUrl in resources.ts).
+export type EvidenceImageDto = Pick<
+  Jsonified<EvidenceImage>,
+  | "id"
+  | "tenantId"
+  | "siteId"
+  | "subjectUserId"
+  | "sourceAgentId"
+  | "sourceEventId"
+  | "sessionId"
+  | "contentType"
+  | "width"
+  | "height"
+  | "ocrText"
+  | "byteSize"
+  | "occurredAt"
+  | "createdAt"
+>;
 
 export type CaseStatus = Case["status"];
 export type DetectionStatus = Detection["status"];

@@ -11,6 +11,17 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 
+### Agent telemetry ingest env
+
+- `AGENT_INGEST_TOKEN` — shared secret agents send in `X-Agent-Token` on `POST /api/v1/agent/events`. Min 32 chars. Optional, but the endpoint rejects every request while it is unset.
+
+v0 rule engine tuning (`artifacts/api-server/src/rules/evaluate.ts`), all optional:
+
+- `RULE_SENSITIVE_KEYWORDS` — comma-separated, case-insensitive. Default: `password,confidential,resign,resignation,leak,ssn,social security,credit card,api key,secret key`
+- `RULE_OFF_HOURS_START_HOUR` / `RULE_OFF_HOURS_END_HOUR` — working window. Defaults `7` / `19`
+- `RULE_OFF_HOURS_TIMEZONE` — IANA zone the window is expressed in. Default `Africa/Johannesburg`
+- `RULE_KEYSTROKE_THRESHOLD` — fires above this count. Default `500`
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
