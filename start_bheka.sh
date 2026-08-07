@@ -23,19 +23,19 @@ docker ps --filter "name=bheka-postgres" --filter "name=bheka-redis"
 
 echo ""
 echo "=== 3. Kill any leftover API/console processes on our ports ==="
-fuser -k 8082/tcp 2>/dev/null || true
+fuser -k 8081/tcp 2>/dev/null || true
 fuser -k 5173/tcp 2>/dev/null || true
 sleep 1
 
 echo ""
-echo "=== 4. Start API server (background, port 8082) ==="
+echo "=== 4. Start API server (background, port 8081) ==="
 export DATABASE_URL="postgres://bheka:bheka@localhost:5432/bheka"
 export REDIS_URL="redis://localhost:6379"
 export SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
 
-nohup env DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" PORT=8082 \
+nohup env DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" PORT=8081 \
   SESSION_SECRET="$SESSION_SECRET" \
-  WEBAUTHN_RP_ID=localhost WEBAUTHN_RP_ORIGIN="http://localhost:8082" \
+  WEBAUTHN_RP_ID=localhost WEBAUTHN_RP_ORIGIN="http://localhost:8081" \
   ALLOWED_ORIGINS="http://localhost:5173" NODE_ENV=development \
   pnpm --filter @workspace/api-server run start > /tmp/api.log 2>&1 &
 sleep 8
@@ -51,10 +51,10 @@ tail -n 15 /tmp/console.log
 
 echo ""
 echo "=== 6. Health check ==="
-curl -s http://localhost:8082/api/v1/healthz || echo "API not responding yet — check /tmp/api.log"
+curl -s http://localhost:8081/api/v1/healthz || echo "API not responding yet — check /tmp/api.log"
 
 echo ""
 echo "=== DONE ==="
 echo "Console:  http://localhost:5173"
-echo "API:      http://localhost:8082/api/v1/healthz"
+echo "API:      http://localhost:8081/api/v1/healthz"
 echo "Login:    admin@eride-technologies.test (dev-login, no password)"
